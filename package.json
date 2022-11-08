@@ -4,7 +4,14 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "eslint": "eslint --color --cache ./src ./test",
+    "unit": "mocha ./test/unit/**/*.js --config ./test/unit/mocharc.js",
+    "coverage": "nyc npm run unit",
+    "test": "npm run eslint && npm run coverage"
+  },
+  "bin": {
+    "move-shard": "bin/move-shard.js",
+    "remove-node": "bin/remove-node.js"
   },
   "repository": {
     "type": "git",
@@ -25,9 +32,13 @@
     "chai": "^4.3.6",
     "chai-as-promised": "^7.1.1",
     "eslint": "^8.26.0",
+    "fetch-mock": "^9.11.0",
     "mocha": "^10.1.0",
     "nyc": "^15.1.0",
     "rewire": "^6.0.0",
     "sinon": "^14.0.1"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.1"
   }
 }

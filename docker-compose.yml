@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+  cht-data-migration:
+    image: public.ecr.aws/s5s3h4s7/cht-data-migration:latest
+    networks:
+      - cht-net
+    environment:
+      - COUCHDB_USER
+      - COUCHDB_PASSWORD
+      - COUCHDB_SERVER=${COUCHDB_SERVER=couchdb}
+
+networks:
+  cht-net:
+    name: ${CHT_NETWORK:-cht-net}
+    external: true
