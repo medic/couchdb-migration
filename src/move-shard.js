@@ -48,8 +48,8 @@ const moveShard = async (shard, toNode) => {
     const changed = updateDbMetadata(metadata, shard, toNode);
     changed && await utils.updateDbMetadata(dbName, metadata);
   }
-}
+};
 
 module.exports = {
   moveShard,
-}
+};

@@ -422,7 +422,7 @@ describe('move-shard', () => {
 
   it('should throw error if getting all dbs fails', async () => {
     sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: [] });
-    sinon.stub(utils, 'getDbs').rejects({ error: true })
+    sinon.stub(utils, 'getDbs').rejects({ error: true });
     await expect(moveShard('shard2', 'node2')).to.be.rejected.and.eventually.deep.equal({ error: true });
   });
 
@@ -448,7 +448,7 @@ describe('move-shard', () => {
       changelog: [],
       by_range: { shard2: ['node2'] },
       by_node: { node2: ['shard2'] },
-    }
+    };
     sinon.stub(utils, 'getDbs').resolves(['db1']);
     sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1'] });
     sinon.stub(utils, 'getDbMetadata').resolves(metadata);
