@@ -7,7 +7,8 @@
     "eslint": "eslint --color --cache ./src ./test",
     "unit": "mocha ./test/unit/**/*.js --config ./test/unit/mocharc.js",
     "coverage": "nyc npm run unit",
-    "test": "npm run eslint && npm run coverage"
+    "test": "npm run eslint && npm run coverage",
+    "e2e": ""
   },
   "bin": {
     "move-shard": "bin/move-shard.js",
