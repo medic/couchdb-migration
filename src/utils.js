@@ -1,8 +1,8 @@
 const fetch = require('node-fetch');
 
 const { COUCHDB_SERVER, COUCHDB_USER, COUCHDB_PASSWORD } = process.env;
-const COUCH_HTTPD_PORT = 5984;
-const COUCH_CHTTPD_PORT = 5986;
+const COUCH_HTTPD_PORT = 25984;
+const COUCH_CHTTPD_PORT = 25986;
 
 const getUrl = (path, cluster) =>
   `http://${COUCHDB_USER}:${COUCHDB_PASSWORD}@${COUCHDB_SERVER}:${cluster? COUCH_CHTTPD_PORT : COUCH_HTTPD_PORT}/${path}`;
@@ -114,6 +114,11 @@ const deleteNode = async (nodeInfo) => {
   }
 };
 
+const syncShards = async (db) => {
+  const url = getUrl(`${db}/_sync_shards`);
+  return await request({ url, method: 'POST' });
+};
+
 module.exports = {
   request,
   getUrl,
@@ -123,4 +128,5 @@ module.exports = {
   updateDbMetadata,
   getNodeInfo,
   deleteNode,
+  syncShards,
 };

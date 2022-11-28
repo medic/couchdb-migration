@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   cht-data-migration:
-    image: public.ecr.aws/s5s3h4s7/cht-data-migration:latest
+    build: .
     networks:
       - cht-net
     environment:
