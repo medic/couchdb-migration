@@ -35,19 +35,7 @@ const generateMatrix = async () => {
   return Object.assign(...shards.map((shard, idx) => ({ [shard]: nodes[idx % nodes.length] })));
 };
 
-/*
-const moveMainFiles = async (source, destinations) => {
-  const files = await fs.readdir(path.join(source));
-  for (const file of files) {
-    if (file === SHARDS || file === DOT_SHARDS) {
-      return;
-    }
-    await fs.rename(path.join(source, file), path.join(destinations[0], file));
-  }
-};*/
-
 module.exports = {
   distributeShards,
   generateMatrix,
-  // moveMainFiles,
 };
