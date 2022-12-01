@@ -26,4 +26,5 @@ jobs:
         with:
           node-version: 16.x
       - run: npm ci
-      - run: npm run e2e
+      - run: npm run e2e-single-node
+      - run: npm run e2e-multi-node

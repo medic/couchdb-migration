@@ -27,10 +27,6 @@ const updateDbMetadata = (metadata, shard, toNode) => {
   metadata.by_node[toNode].push(shard);
   metadata.changelog.push(['add', shard, toNode]);
 
-  return fromNodes;
-};
-
-const removeNodeFromMetadata = (shard, metadata, fromNodes) => {
   fromNodes.forEach(fromNode => {
     metadata.by_node[fromNode] = metadata.by_node[fromNode].filter(shardName => shardName !== shard);
     if (!metadata.by_node[fromNode].length) {
@@ -40,6 +36,8 @@ const removeNodeFromMetadata = (shard, metadata, fromNodes) => {
     metadata.by_range[shard].splice(idx, 1);
     metadata.changelog.push(['remove', shard, fromNode]);
   });
+
+  return fromNodes;
 };
 
 const moveShard = async (shard, toNode) => {
@@ -52,16 +50,7 @@ const moveShard = async (shard, toNode) => {
     if (oldNodes) {
       await utils.updateDbMetadata(dbName, metadata);
     }
-
-    // await utils.syncShards(dbName);
-
-    const newMetadata = await utils.getDbMetadata(dbName);
-    if (oldNodes) {
-      await removeNodeFromMetadata(shard, newMetadata, oldNodes);
-      await utils.updateDbMetadata(dbName, newMetadata);
-    }
   }
-  console.log('Shard moved', shard, toNode);
 };
 
 module.exports = {

@@ -73,8 +73,8 @@ describe('move-shard', () => {
           ['add', 'shard2', 'node1'],
           ['add', 'shard3', 'node1'],
           ['add', 'shard4', 'node1'],
-          ['remove', 'shard1', 'node1'],
           ['add', 'shard1', 'node3'],
+          ['remove', 'shard1', 'node1'],
         ],
         by_node: {
           node1: ['shard2', 'shard3', 'shard4'],
@@ -187,8 +187,8 @@ describe('move-shard', () => {
           ['add', 'shard2', 'node1'],
           ['add', 'shard3', 'node1'],
           ['add', 'shard4', 'node1'],
-          ['remove', 'shard1', 'node1'],
           ['add', 'shard1', 'node2'],
+          ['remove', 'shard1', 'node1'],
         ],
         by_node: {
           node1: ['shard2', 'shard3', 'shard4'],
@@ -242,8 +242,8 @@ describe('move-shard', () => {
           ['add', 'shard2', 'node1'],
           ['add', 'shard3', 'node2'],
           ['add', 'shard4', 'node2'],
-          ['remove', 'shard1', 'node1'],
           ['add', 'shard1', 'node2'],
+          ['remove', 'shard1', 'node1'],
         ],
         by_node: {
           node1: ['shard2'],
@@ -301,8 +301,8 @@ describe('move-shard', () => {
           ['add', 'shard4', 'node2'],
           ['remove', 'shard1', 'node1'],
           ['add', 'shard1', 'node2'],
-          ['remove', 'shard2', 'node1'],
           ['add', 'shard2', 'node2'],
+          ['remove', 'shard2', 'node1'],
         ],
         by_node: {
           node2: ['shard3', 'shard4', 'shard1', 'shard2'],
@@ -355,9 +355,9 @@ describe('move-shard', () => {
           ['add', 'shard2', 'node1'],
           ['add', 'shard3', 'node2'],
           ['add', 'shard3', 'node3'],
+          ['add', 'shard3', 'node1'],
           ['remove', 'shard3', 'node2'],
           ['remove', 'shard3', 'node3'],
-          ['add', 'shard3', 'node1'],
         ],
         by_node: {
           node1: ['shard1', 'shard3'],
@@ -404,8 +404,8 @@ describe('move-shard', () => {
         changelog: [
           ['add', 'shard1', 'node1'],
           ['add', 'shard2', 'node1'],
-          ['remove', 'shard2', 'node1'],
           ['add', 'shard2', 'node2'],
+          ['remove', 'shard2', 'node1'],
         ],
         by_node: {
           node1: ['shard1'],

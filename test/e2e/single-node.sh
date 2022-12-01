@@ -1,7 +1,22 @@
 #!/bin/bash
 set -e
+BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd $BASEDIR
+
 user=admin
 password=pass
+
+couchdir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
+
+export COUCHDB_USER=$user
+export COUCHDB_PASSWORD=$password
+export COUCHDB_SERVER=127.0.0.1
+
+export DB1_DATA=$couchdir
+export COUCH_PORT=25984
+export COUCH_CLUSTER_PORT=25986
+export COUCH_URL=http://$user:$password@$COUCHDB_SERVER:$COUCH_PORT
+
 
 waitForStatus() {
   count=0
@@ -16,19 +31,22 @@ waitForStatus() {
 }
 
 rm -rf ./data/*
+docker rm -f -v scripts-couchdb.1-1 test-couchdb test-couchdb3
 
-tmp_dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
-docker run -d -p 15984:5984 -p 15986:5986 --name test-couchdb -e COUCHDB_USER=$user -e COUCHDB_PASSWORD=$password -v $tmp_dir:/opt/couchdb/data apache/couchdb:2.3.1
-waitForStatus http://$user:$password@127.0.0.1:15984 200
+
+
+docker run -d -p 25984:5984 -p 25986:5986 --name test-couchdb -e COUCHDB_USER=$user -e COUCHDB_PASSWORD=$password -v $couchdir:/opt/couchdb/data apache/couchdb:2.3.1
+waitForStatus $COUCH_URL 200
 node ./scripts/generate-documents
+sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
 docker rm -f -v test-couchdb
 
-echo $COUCHDB_PASSWORD
+docker-compose -f ./scripts/couchdb-single.yml up -d
+waitForStatus $COUCH_URL 200
 
-COUCHDB_USER=$user COUCHDB_PASSWORD=$password DB1_DATA=$tmp_dir docker-compose -f ./scripts/couchdb-single.yml up -d
-waitForStatus http://$user:$password@127.0.0.1:25984 200
-COUCHDB_USER=$user COUCHDB_PASSWORD=$password COUCHDB_SERVER=127.0.0.1 node ../../bin/move-node.js nonode@nohost couchdb@127.0.0.1
+node ../../bin/move-node.js nonode@nohost couchdb@127.0.0.1
+
 node ./scripts/assert-dbs.js
 
-COUCHDB_USER=$user COUCHDB_PASSWORD=$password DB1_DATA=$tmp_dir docker-compose -f ./scripts/couchdb-single.yml down --remove-orphans
+docker-compose -f ./scripts/couchdb-single.yml down --remove-orphans --volumes
 

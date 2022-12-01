@@ -1,8 +1,8 @@
 const fetch = require('node-fetch');
 
-const { COUCHDB_SERVER, COUCHDB_USER, COUCHDB_PASSWORD } = process.env;
-const COUCH_HTTPD_PORT = 25984;
-const COUCH_CHTTPD_PORT = 25986;
+const { COUCHDB_SERVER, COUCHDB_USER, COUCHDB_PASSWORD, COUCH_PORT, COUCH_CLUSTER_PORT } = process.env;
+const COUCH_HTTPD_PORT = COUCH_PORT || 5984;
+const COUCH_CHTTPD_PORT = COUCH_CLUSTER_PORT || 5986;
 
 const getUrl = (path, cluster) =>
   `http://${COUCHDB_USER}:${COUCHDB_PASSWORD}@${COUCHDB_SERVER}:${cluster? COUCH_CHTTPD_PORT : COUCH_HTTPD_PORT}/${path}`;
@@ -119,6 +119,17 @@ const syncShards = async (db) => {
   return await request({ url, method: 'POST' });
 };
 
+const getShards = async () => {
+  const dbs = await getDbs();
+  const dbMetadata = await getDbMetadata(dbs[0]);
+  return Object.keys(dbMetadata.by_range);
+};
+
+const getNodes = async () => {
+  const membership = await getMembership();
+  return membership.all_nodes;
+};
+
 module.exports = {
   request,
   getUrl,
@@ -129,4 +140,6 @@ module.exports = {
   getNodeInfo,
   deleteNode,
   syncShards,
+  getShards,
+  getNodes,
 };

@@ -8,7 +8,8 @@
     "unit": "mocha ./test/unit/**/*.js --config ./test/unit/mocharc.js",
     "coverage": "nyc npm run unit",
     "test": "npm run eslint && npm run coverage",
-    "e2e": ""
+    "e2e-single-node": "./test/e2e/single-node.sh",
+    "e2e-multi-node": "sudo ./test/e2e/multi-node.sh"
   },
   "bin": {
     "move-shard": "bin/move-shard.js",

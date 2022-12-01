@@ -1,5 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
+const utils = require('./utils');
 
 const SHARDS = 'shards';
 const DOT_SHARDS = '.shards';
@@ -11,31 +12,29 @@ const sameShards = (shards, dotShards) => {
   return shards.every((shard, i) => dotShards[i] === shard);
 };
 
-const splitShards = (shards, destinations) => {
-  const nbrDestinations = destinations.length + 1;
-  const shardMap = Object.assign(...shards.map((shard, idx) => ({ [shard]: destinations[idx % nbrDestinations] })));
-  return shardMap;
-};
+const distributeShards = async (shardMatrix, fileMatrix) => {
+  const mainPath = fileMatrix['couchdb@couchdb.1'];
 
-const distributeShards = async (source, destinations) => {
-  if (!destinations.length || !source) {
-    throw new Error('bad input'); // todo
-  }
-
-  const shards = await fs.readdir(path.join(source, SHARDS));
-  const dotShards = await fs.readdir(path.join(source, DOT_SHARDS));
+  const shards = await fs.readdir(path.join(mainPath, SHARDS));
+  const dotShards = await fs.readdir(path.join(mainPath, DOT_SHARDS));
 
   if (!sameShards(shards, dotShards)) {
     throw new Error('bad data'); // todo
   }
 
-  const shardMap = splitShards(shards, [source, ...destinations]);
-  for (const shard of shards) {
-    const destination = shardMap[shard];
-    await fs.rename(path.join(source, SHARDS, shard), path.join(destination, SHARDS, shard));
-    await fs.rename(path.join(source, DOT_SHARDS, shard), path.join(destination, DOT_SHARDS, shard));
+  for (const [shard, node] of Object.entries(shardMatrix)) {
+    const destination = fileMatrix[node];
+    await fs.rename(path.join(mainPath, SHARDS, shard), path.join(destination, SHARDS, shard));
+    await fs.rename(path.join(mainPath, DOT_SHARDS, shard), path.join(destination, DOT_SHARDS, shard));
   }
 };
+
+const generateMatrix = async () => {
+  const shards = await utils.getShards();
+  const nodes = await utils.getNodes();
+  return Object.assign(...shards.map((shard, idx) => ({ [shard]: nodes[idx % nodes.length] })));
+};
+
 /*
 const moveMainFiles = async (source, destinations) => {
   const files = await fs.readdir(path.join(source));
@@ -47,7 +46,8 @@ const moveMainFiles = async (source, destinations) => {
   }
 };*/
 
-modules.exports = {
+module.exports = {
   distributeShards,
-  moveMainFiles,
+  generateMatrix,
+  // moveMainFiles,
 };

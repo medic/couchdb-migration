@@ -1,11 +1,10 @@
-const [,, source, ...destinations ] = process.argv;
+const [,, shardMatrixJson, fileMatrixJson ] = process.argv;
 
-const { distributeShards, moveMainFiles } = require('../src/distribute-shards');
+const { distributeShards } = require('../src/distribute-shards');
 
 (async () => {
   try {
-    // await moveMainFiles(source, destinations);
-    await distributeShards(source, destinations);
+    await distributeShards(JSON.parse(shardMatrixJson), JSON.parse(fileMatrixJson));
   } catch (err) {
     console.error('An unexpected error occurred', err);
     process.exit(1);
