@@ -13,6 +13,7 @@ export COUCHDB_SERVER=127.0.0.1
 couch1dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 couch2dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 couch3dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
+mkdir -p $couch2dir/shards $couch2dir/.shards $couch3dir/shards $couch3dir/.shards
 jsondataddir=$(mktemp -d -t json-XXXXXXXXXX)
 
 export DB1_DATA=$couch1dir
@@ -49,26 +50,31 @@ waitForCluster() {
   echo "CouchDb cluster ready"
 }
 
+# cleanup from last test, in case of interruptions
 docker rm -f -v scripts-couchdb.1-1 scripts-couchdb.2-1 scripts-couchdb.3-1 test-couchdb
 
+# launch vanilla couch, populate with some data
 docker run -d -p $COUCH_PORT:5984 -p $COUCH_CLUSTER_PORT:5986 --name test-couchdb -e COUCHDB_USER=$user -e COUCHDB_PASSWORD=$password -v $couch1dir:/opt/couchdb/data apache/couchdb:2.3.1
 waitForStatus $COUCH_URL 200
 node ./scripts/generate-documents $jsondataddir
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
 docker rm -f -v test-couchdb
 
+# launch cht 4.x CouchDb cluster
 docker-compose -f ./scripts/couchdb-cluster.yml up -d
 waitForStatus $COUCH_URL 200
 waitForCluster $COUCH_URL
 
-mkdir -p $couch2dir/shards $couch2dir/.shards $couch3dir/shards $couch3dir/.shards
-
+# generate shard matrix
+# this is an object that assigns every shard to one of the nodes
 shard_matrix=$( node ../../bin/generate-shard-distribution-matrix.js)
 file_matrix="{\"couchdb@couchdb.1\":\"$couch1dir\",\"couchdb@couchdb.2\":\"$couch2dir\",\"couchdb@couchdb.3\":\"$couch3dir\"}"
 echo $shard_matrix
+# moves shard data files to their corresponding nodes, according to the matrix
 node ../../bin/distribute-shards.js $shard_matrix $file_matrix
+# change database metadata to match the shard physical locations
 node ../../bin/move-shards.js $shard_matrix
-
+# test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir $shard_matrix
 
 docker-compose -f ./scripts/couchdb-cluster.yml down --remove-orphans --volumes
