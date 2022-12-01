@@ -1,6 +1,5 @@
 const rpn = require('request-promise-native');
 const path = require('path');
-const { json } = require('mocha/lib/reporters');
 const url = 'http://admin:pass@localhost:25984';
 const dataPath = path.join(__dirname, '..', 'data');
 
@@ -8,11 +7,6 @@ const [,,shardMatrixJson] = process.argv;
 const shardMatrix = shardMatrixJson && JSON.parse(shardMatrixJson);
 
 const getDbs = () => rpn.get({ url: `${url}/_all_dbs`, json: true });
-const getNodes = async () => {
-  const membership = rpn.get({ url: `${url}/_membership`, json: true });
-  return membership.all_nodes;
-};
-
 const syncShards = (db) => rpn.post({ url: `${url}/${db}/_sync_shards`, json: true });
 
 const checkDocs = async (db) => {
