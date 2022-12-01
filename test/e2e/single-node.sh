@@ -7,6 +7,7 @@ user=admin
 password=pass
 
 couchdir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
+jsondataddir=$(mktemp -d -t json-XXXXXXXXXX)
 
 export COUCHDB_USER=$user
 export COUCHDB_PASSWORD=$password
@@ -30,14 +31,11 @@ waitForStatus() {
   echo "CouchDb ready"
 }
 
-rm -rf ./data/*
 docker rm -f -v scripts-couchdb.1-1 test-couchdb test-couchdb3
-
-
 
 docker run -d -p 25984:5984 -p 25986:5986 --name test-couchdb -e COUCHDB_USER=$user -e COUCHDB_PASSWORD=$password -v $couchdir:/opt/couchdb/data apache/couchdb:2.3.1
 waitForStatus $COUCH_URL 200
-node ./scripts/generate-documents
+node ./scripts/generate-documents $jsondataddir
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
 docker rm -f -v test-couchdb
 
@@ -46,7 +44,7 @@ waitForStatus $COUCH_URL 200
 
 node ../../bin/move-node.js nonode@nohost couchdb@127.0.0.1
 
-node ./scripts/assert-dbs.js
+node ./scripts/assert-dbs.js $jsondataddir
 
 docker-compose -f ./scripts/couchdb-single.yml down --remove-orphans --volumes
 

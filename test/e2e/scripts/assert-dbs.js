@@ -1,9 +1,8 @@
 const rpn = require('request-promise-native');
 const path = require('path');
-const url = 'http://admin:pass@localhost:25984';
-const dataPath = path.join(__dirname, '..', 'data');
+const url = process.env.COUCH_URL;
 
-const [,,shardMatrixJson] = process.argv;
+const [,,dataPath, shardMatrixJson] = process.argv;
 const shardMatrix = shardMatrixJson && JSON.parse(shardMatrixJson);
 
 const getDbs = () => rpn.get({ url: `${url}/_all_dbs`, json: true });

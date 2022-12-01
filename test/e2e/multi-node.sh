@@ -13,6 +13,7 @@ export COUCHDB_SERVER=127.0.0.1
 couch1dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 couch2dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 couch3dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
+jsondataddir=$(mktemp -d -t json-XXXXXXXXXX)
 
 export DB1_DATA=$couch1dir
 export DB2_DATA=$couch2dir
@@ -48,12 +49,11 @@ waitForCluster() {
   echo "CouchDb cluster ready"
 }
 
-rm -rf ./data/*
 docker rm -f -v scripts-couchdb.1-1 scripts-couchdb.2-1 scripts-couchdb.3-1 test-couchdb
 
 docker run -d -p $COUCH_PORT:5984 -p $COUCH_CLUSTER_PORT:5986 --name test-couchdb -e COUCHDB_USER=$user -e COUCHDB_PASSWORD=$password -v $couch1dir:/opt/couchdb/data apache/couchdb:2.3.1
 waitForStatus $COUCH_URL 200
-node ./scripts/generate-documents
+node ./scripts/generate-documents $jsondataddir
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
 docker rm -f -v test-couchdb
 
@@ -69,7 +69,7 @@ echo $shard_matrix
 node ../../bin/distribute-shards.js $shard_matrix $file_matrix
 node ../../bin/move-shards.js $shard_matrix
 
-node ./scripts/assert-dbs.js $shard_matrix
+node ./scripts/assert-dbs.js $jsondataddir $shard_matrix
 
 docker-compose -f ./scripts/couchdb-cluster.yml down --remove-orphans --volumes
 

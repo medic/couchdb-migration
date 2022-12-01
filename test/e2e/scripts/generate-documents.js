@@ -3,8 +3,8 @@ const uuid = require('uuid').v4;
 const fs = require('fs').promises;
 const path = require('path');
 
-const url = 'http://admin:pass@localhost:25984';
-const dataPath = path.join(__dirname, '..', 'data');
+const url = process.env.COUCH_URL;
+const [,,dataPath] = process.argv;
 
 // const nbrDatabases = 4;
 const nbrDocuments = 1000;
