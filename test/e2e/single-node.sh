@@ -35,14 +35,14 @@ waitForStatus $COUCH_URL 200
 node ./scripts/generate-documents $jsondataddir
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
 # export env for 4.x couch
-export $(node ../../bin/get-env.js | xargs)
+export $(get-env | xargs)
 docker rm -f -v test-couchdb
 
 # launch cht 4.x CouchDb single node
 docker-compose -f ./scripts/couchdb-single.yml up -d
 waitForStatus $COUCH_URL 200
 # change database metadata to match new node name
-node ../../bin/move-node.js
+move-node
 # test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir
 

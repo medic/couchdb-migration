@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { generateMatrix } = require('../src/distribute-shards');
 
 (async () => {

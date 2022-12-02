@@ -55,7 +55,7 @@ waitForStatus $COUCH_URL 200
 node ./scripts/generate-documents $jsondataddir
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
 # export env for 4.x couch
-export $(node ../../bin/get-env.js | xargs)
+export $(get-env | xargs)
 docker rm -f -v test-couchdb
 
 # launch cht 4.x CouchDb cluster
@@ -65,13 +65,13 @@ waitForCluster $COUCH_URL
 
 # generate shard matrix
 # this is an object that assigns every shard to one of the nodes
-shard_matrix=$(node ../../bin/generate-shard-distribution-matrix.js)
+shard_matrix=$(generate-shard-distribution-matrix)
 file_matrix="{\"couchdb@couchdb.1\":\"$couch1dir\",\"couchdb@couchdb.2\":\"$couch2dir\",\"couchdb@couchdb.3\":\"$couch3dir\"}"
 echo $shard_matrix
 # moves shard data files to their corresponding nodes, according to the matrix
 node ./scripts/distribute-shards.js $shard_matrix $file_matrix
 # change database metadata to match the shard physical locations
-node ../../bin/move-shards.js $shard_matrix
+move-shards $shard_matrix
 # test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir $shard_matrix
 

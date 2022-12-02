@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const [,, shardMatrix ] = process.argv;
 
 const { moveShard } = require('../src/move-shard');

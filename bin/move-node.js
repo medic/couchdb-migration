@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { moveNode, syncShards } = require('../src/move-node');
 const { removeNode } = require('../src/remove-node');
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const [ ,, nodeName ] = process.argv;
 const { removeNode } = require('../src/remove-node');
 

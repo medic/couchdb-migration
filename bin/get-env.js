@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { getEnv } = require('../src/get-env');
 
 (async () => {

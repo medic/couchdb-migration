@@ -12,7 +12,11 @@
     "e2e-multi-node": "sudo ./test/e2e/multi-node.sh"
   },
   "bin": {
+    "generate-shard-distribution-matrix": "bin/generate-shard-distribution-matrix.js",
+    "get-env": "bin/get-env.js",
+    "move-node": "bin/move-node.js",
     "move-shard": "bin/move-shard.js",
+    "move-shards": "bin/move-shards.js",
     "remove-node": "bin/remove-node.js"
   },
   "repository": {
