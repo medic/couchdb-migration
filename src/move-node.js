@@ -1,11 +1,23 @@
 const utils = require('./utils');
 const moveShard = require('./move-shard');
 
-const moveNode = async (oldNode, newNode) => {
+const moveNode = async (toNode) => {
+  const removedNodes = [];
+
+  if (!toNode) {
+    const nodes = await utils.getNodes();
+    if (nodes.length > 1) {
+      throw new Error('More than one node found.');
+    }
+    toNode = nodes[0];
+  }
+
   const shards = await utils.getShards();
   for (const shard of shards) {
-    await moveShard.moveShard(shard, newNode);
+    const oldNodes = await moveShard.moveShard(shard, toNode);
+    removedNodes.push(...oldNodes);
   }
+  return [...new Set(removedNodes)];
 };
 
 const syncShards = async () => {

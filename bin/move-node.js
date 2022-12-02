@@ -1,12 +1,12 @@
-const [,, fromNode, toNode ] = process.argv;
-
 const { moveNode, syncShards } = require('../src/move-node');
 const { removeNode } = require('../src/remove-node');
 
 (async () => {
   try {
-    await moveNode(fromNode, toNode);
-    await removeNode(fromNode);
+    const removedNodes = await moveNode();
+    for (const node of removedNodes) {
+      await removeNode(node);
+    }
     await syncShards();
   } catch (err) {
     console.error('An unexpected error occurred', err);

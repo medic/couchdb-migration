@@ -15,8 +15,8 @@ services:
       - "CLUSTER_PEER_IPS=couchdb.2,couchdb.3"
       - "COUCHDB_LOG_LEVEL=${COUCHDB_LOG_LEVEL:-log}"
     ports:
-      - "25984:5984"
-      - "25986:5986"
+      - "${COUCH_PORT}:5984"
+      - "${COUCH_CLUSTER_PORT}:5986"
 
   couchdb.2:
     image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.0.0-4.0.0

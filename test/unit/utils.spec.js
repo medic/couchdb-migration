@@ -5,18 +5,30 @@ let utils;
 let fetchStub;
 
 const stubProcess = ({ server= 'couchdb', user= 'admin', pass= 'pass' }={}) => {
-  process.env.COUCHDB_SERVER = server;
-  process.env.COUCHDB_USER = user;
-  process.env.COUCHDB_PASSWORD = pass;
-
+  process.env.COUCH_URL = `http://${user}:${pass}@${server}:5984`;
   utils = rewire('../../src/utils');
   fetchStub = sinon.stub();
   utils.__set__('fetch', fetchStub);
 };
 
+const jsonHeaders = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+};
+
 describe('utils', () => {
   beforeEach(() => {
     stubProcess();
+  });
+
+  it('should throw an error if env is not set', () => {
+    try {
+      process.env.COUCH_URL = '';
+      utils = rewire('../../src/utils');
+      expect.fail();
+    } catch (err) {
+      expect(err.message).to.equal('Env variable COUCH_URL must be set');
+    }
   });
 
   describe('getUrl', () => {
@@ -87,8 +99,7 @@ describe('utils', () => {
           headers: {
             a: 1,
             b: 2,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            ...jsonHeaders
           },
           field: '1',
           something: '123',
@@ -128,12 +139,7 @@ describe('utils', () => {
       expect(fetchStub.callCount).to.equal(1);
       expect(fetchStub.args[0]).to.deep.equal([
         'http://admin:pass@couchdb:5984/_all_dbs',
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          }
-        }
+        { headers: jsonHeaders }
       ]);
     });
 
@@ -155,12 +161,7 @@ describe('utils', () => {
       expect(fetchStub.callCount).to.equal(1);
       expect(fetchStub.args[0]).to.deep.equal([
         'http://admin:pass@couchdb:5984/_membership',
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          }
-        }
+        { headers: jsonHeaders }
       ]);
     });
 
@@ -181,12 +182,7 @@ describe('utils', () => {
       expect(fetchStub.callCount).to.equal(1);
       expect(fetchStub.args[0]).to.deep.equal([
         'http://admin:pass@couchdb:5986/_dbs/thedb',
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          }
-        }
+        { headers: jsonHeaders }
       ]);
     });
 
@@ -215,10 +211,7 @@ describe('utils', () => {
         {
           method: 'PUT',
           body: JSON.stringify(metadata),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          }
+          headers: jsonHeaders,
         }
       ]);
     });
@@ -252,12 +245,7 @@ describe('utils', () => {
       expect(fetchStub.callCount).to.equal(1);
       expect(fetchStub.args[0]).to.deep.equal([
         'http://admin:pass@couchdb:5986/_nodes/couchdb@couchdb.1',
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          }
-        }
+        { headers: jsonHeaders }
       ]);
     });
 
@@ -284,10 +272,7 @@ describe('utils', () => {
         'http://admin:pass@couchdb:5986/_nodes/couchdb@couchdb.1?rev=the-rev',
         {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          }
+          headers: jsonHeaders,
         }
       ]);
     });
@@ -312,4 +297,170 @@ describe('utils', () => {
     });
   });
 
+  describe('syncShards', () => {
+    it('should sync shards for db', async () => {
+      fetchStub.resolves(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+      const response = await utils.syncShards('dbname');
+
+      expect(response).to.deep.equal({ ok: true });
+      expect(fetchStub.callCount).to.equal(1);
+      expect(fetchStub.args[0]).to.deep.equal([
+        'http://admin:pass@couchdb:5984/dbname/_sync_shards',
+        {
+          headers: jsonHeaders,
+          method: 'POST',
+        },
+      ]);
+    });
+
+    it('should throw error when no db name is passed', async () => {
+      await expect(utils.syncShards()).to.be.rejectedWith(Error, 'Missing db name');
+    });
+
+    it('should throw error when request throws error', async () => {
+      fetchStub.rejects(new Response('whatever', { status: 500 }));
+      await expect(utils.syncShards('thedb')).to.be.rejectedWith(Error, 'Error while syncing shards for db: thedb');
+    });
+  });
+
+  describe('getShards', () => {
+    it('should return list of shards', async () => {
+      const allClusterDbs = [
+        '_dbs',
+        '_nodes',
+        '_replicator',
+        '_users',
+        'shards/00000000-1fffffff/medic.1637673820',
+        'shards/20000000-3fffffff/medic.1637673820',
+        'shards/40000000-5fffffff/medic.1637673820',
+        'shards/60000000-7fffffff/medic.1637673820',
+        'shards/80000000-9fffffff/medic.1637673820',
+        'shards/a0000000-bfffffff/medic.1637673820',
+        'shards/c0000000-dfffffff/medic.1637673820',
+        'shards/e0000000-ffffffff/medic.1637673820',
+        'shards/00000000-1fffffff/medic-sentinel.1637673820',
+        'shards/20000000-3fffffff/medic-sentinel.1637673820',
+        'shards/40000000-5fffffff/medic-sentinel.1637673820',
+        'shards/60000000-7fffffff/medic-sentinel.1637673820',
+        'shards/80000000-9fffffff/medic-sentinel.1637673820',
+        'shards/a0000000-bfffffff/medic-sentinel.1637673820',
+        'shards/c0000000-dfffffff/medic-sentinel.1637673820',
+        'shards/e0000000-ffffffff/medic-sentinel.1637673820',
+        'shards/00000000-1fffffff/medic-users-meta.1637673820',
+        'shards/20000000-3fffffff/medic-users-meta.1637673820',
+        'shards/40000000-5fffffff/medic-users-meta.1637673820',
+        'shards/60000000-7fffffff/medic-users-meta.1637673820',
+        'shards/80000000-9fffffff/medic-users-meta.1637673820',
+        'shards/a0000000-bfffffff/medic-users-meta.1637673820',
+        'shards/c0000000-dfffffff/medic-users-meta.1637673820',
+        'shards/e0000000-ffffffff/medic-users-meta.1637673820',
+      ];
+
+      fetchStub.resolves(new Response(JSON.stringify(allClusterDbs), { status: 200 }));
+
+      const shards = await utils.getShards();
+
+      expect(shards).to.deep.equal([
+        '00000000-1fffffff',
+        '20000000-3fffffff',
+        '40000000-5fffffff',
+        '60000000-7fffffff',
+        '80000000-9fffffff',
+        'a0000000-bfffffff',
+        'c0000000-dfffffff',
+        'e0000000-ffffffff',
+      ]);
+      expect(fetchStub.callCount).to.equal(1);
+      expect(fetchStub.args[0]).to.deep.equal([
+        'http://admin:pass@couchdb:5986/_all_dbs',
+        { headers: jsonHeaders }
+      ]);
+    });
+
+    it('should throw error on fetch error', async () => {
+      fetchStub.rejects(new Response('whatever', { status: 500 }));
+      await expect(utils.getShards()).to.be.rejectedWith(Error, 'Error while getting list of shards');
+    });
+  });
+
+  describe('getNodes', () => {
+    it('should return all_nodes', async () => {
+      const membership = { all_nodes: ['1', '2'], cluster_nodes: ['1', '2', '3'] };
+      fetchStub.resolves(new Response(JSON.stringify(membership), { status: 200 }));
+
+      const result = await utils.getNodes();
+
+      expect(result).to.deep.equal(membership.all_nodes);
+
+      expect(fetchStub.callCount).to.equal(1);
+      expect(fetchStub.args[0]).to.deep.equal([
+        'http://admin:pass@couchdb:5984/_membership',
+        { headers: jsonHeaders }
+      ]);
+    });
+
+    it('should throw request errors', async () => {
+      fetchStub.rejects({ an: 'error' });
+      await expect(utils.getNodes()).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
+    });
+  });
+
+  describe('getConfig', () => {
+    it('should return config value from first node', async () => {
+      const membership = { all_nodes: ['1', '2'], cluster_nodes: ['1', '2', '3'] };
+      fetchStub
+        .withArgs('http://admin:pass@couchdb:5984/_membership')
+        .resolves(new Response(JSON.stringify(membership), { status: 200 }));
+      fetchStub
+        .withArgs('http://admin:pass@couchdb:5984/_node/1/_config/mysection/mykey')
+        .resolves(new Response(JSON.stringify('myvalue'), { status: 200 }));
+
+      const result = await utils.getConfig('mysection', 'mykey');
+      expect(result).to.equal('myvalue');
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args[0]).to.deep.equal([
+        'http://admin:pass@couchdb:5984/_membership',
+        { headers: jsonHeaders }
+      ]);
+      expect(fetchStub.args[1]).to.deep.equal([
+        'http://admin:pass@couchdb:5984/_node/1/_config/mysection/mykey',
+        { headers: jsonHeaders }
+      ]);
+    });
+
+    it('should return empty string when no config value exists', async () => {
+      const membership = { all_nodes: ['node1', '2'], cluster_nodes: ['1', '2', '3'] };
+      fetchStub
+        .withArgs('http://admin:pass@couchdb:5984/_membership')
+        .resolves(new Response(JSON.stringify(membership), { status: 200 }));
+      fetchStub
+        .withArgs('http://admin:pass@couchdb:5984/_node/node1/_config/sec/key')
+        .rejects(new Response('not found', { status: 404 }));
+
+      const result = await utils.getConfig('sec', 'key');
+      expect(result).to.equal('');
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args[0]).to.deep.equal([
+        'http://admin:pass@couchdb:5984/_membership',
+        { headers: jsonHeaders }
+      ]);
+      expect(fetchStub.args[1]).to.deep.equal([
+        'http://admin:pass@couchdb:5984/_node/node1/_config/sec/key',
+        { headers: jsonHeaders }
+      ]);
+    });
+
+    it('should throw errors when request fails', async () => {
+      const membership = { all_nodes: ['node1', '2'], cluster_nodes: ['1', '2', '3'] };
+      fetchStub
+        .withArgs('http://admin:pass@couchdb:5984/_membership')
+        .resolves(new Response(JSON.stringify(membership), { status: 200 }));
+      fetchStub
+        .withArgs('http://admin:pass@couchdb:5984/_node/node1/_config/sec/key')
+        .rejects(new Response(JSON.stringify('boom'), { status: 500 }));
+
+      await expect(utils.getConfig()).to.be.rejectedWith(Error, 'Error when getting config');
+    });
+  });
 });

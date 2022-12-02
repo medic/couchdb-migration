@@ -42,6 +42,7 @@ const updateDbMetadata = (metadata, shard, toNode) => {
 
 const moveShard = async (shard, toNode) => {
   await validateCall(shard, toNode);
+  const removedNodes = [];
 
   const dbs = await utils.getDbs();
   for (const dbName of dbs) {
@@ -49,8 +50,10 @@ const moveShard = async (shard, toNode) => {
     const oldNodes = updateDbMetadata(metadata, shard, toNode);
     if (oldNodes) {
       await utils.updateDbMetadata(dbName, metadata);
+      removedNodes.push(...oldNodes);
     }
   }
+  return [...new Set(removedNodes)];
 };
 
 module.exports = {

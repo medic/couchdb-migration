@@ -1,16 +1,26 @@
 const fetch = require('node-fetch');
+const { COUCH_URL, COUCH_CLUSTER_PORT } = process.env;
 
-const { COUCHDB_SERVER, COUCHDB_USER, COUCHDB_PASSWORD, COUCH_PORT, COUCH_CLUSTER_PORT } = process.env;
-const COUCH_HTTPD_PORT = COUCH_PORT || 5984;
-const COUCH_CHTTPD_PORT = COUCH_CLUSTER_PORT || 5986;
+if (!COUCH_URL) {
+  throw new Error('Env variable COUCH_URL must be set');
+}
 
-const getUrl = (path, cluster) =>
-  `http://${COUCHDB_USER}:${COUCHDB_PASSWORD}@${COUCHDB_SERVER}:${cluster? COUCH_CHTTPD_PORT : COUCH_HTTPD_PORT}/${path}`;
+const couchUrl = new URL(COUCH_URL);
+const couchClusterUrl = new URL(couchUrl);
+couchClusterUrl.port = COUCH_CLUSTER_PORT || 5986;
+
+const getUrl = (path, cluster, query) => {
+  const url = new URL(cluster ? couchClusterUrl : couchUrl);
+  url.pathname = path;
+  query && (url.search = query);
+  return url.toString();
+};
 
 class HTTPResponseError extends Error {
   constructor(response) {
     super(`HTTP Error Response: ${response.status} ${response.statusText}`);
     this.response = response;
+    this.status = response.status;
   }
 }
 
@@ -105,7 +115,7 @@ const deleteNode = async (nodeInfo) => {
     throw new Error('Missing or invalid node metadata');
   }
 
-  const url = getUrl(`_nodes/${nodeInfo._id}?rev=${nodeInfo._rev}`, true);
+  const url = getUrl(`_nodes/${nodeInfo._id}`, true, `rev=${nodeInfo._rev}`);
   try {
     return await request({ url, method: 'DELETE' });
   } catch (err) {
@@ -115,19 +125,53 @@ const deleteNode = async (nodeInfo) => {
 };
 
 const syncShards = async (db) => {
+  if (!db) {
+    throw new Error('Missing db name');
+  }
   const url = getUrl(`${db}/_sync_shards`);
-  return await request({ url, method: 'POST' });
+  try {
+    return await request({ url, method: 'POST' });
+  } catch (err) {
+    console.error(`Error while syncing shards for db: ${db}`, err);
+    throw new Error(`Error while syncing shards for db: ${db}`);
+  }
+
 };
 
 const getShards = async () => {
-  const dbs = await getDbs();
-  const dbMetadata = await getDbMetadata(dbs[0]);
-  return Object.keys(dbMetadata.by_range);
+  const url = getUrl('_all_dbs', true);
+  try {
+    const clusterDbs = await request({ url });
+    const re = /^shards\/([^/]+)\//;
+    let match;
+    const shards = clusterDbs
+      .map(db => ((match = db.match(re)) && match && match[1]))
+      .filter(value => value);
+    return [...new Set(shards)];
+  } catch (err) {
+    console.error('Error while getting list of shards', err);
+    throw new Error('Error while getting list of shards');
+  }
 };
 
 const getNodes = async () => {
   const membership = await getMembership();
   return membership.all_nodes;
+};
+
+const getConfig = async (section, key) => {
+  try {
+    const nodes = await getNodes();
+    const node = nodes[0];
+    const url = getUrl(`_node/${node}/_config/${section}/${key}`);
+    return await request({ url });
+  } catch (err) {
+    if (err.status === 404) {
+      return '';
+    }
+    console.error('Error when getting config', err);
+    throw new Error('Error when getting config');
+  }
 };
 
 module.exports = {
@@ -142,4 +186,6 @@ module.exports = {
   syncShards,
   getShards,
   getNodes,
+  getConfig,
+  couchUrl,
 };

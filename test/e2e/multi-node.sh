@@ -6,10 +6,6 @@ cd $BASEDIR
 user=admin
 password=pass
 
-export COUCHDB_USER=$user
-export COUCHDB_PASSWORD=$password
-export COUCHDB_SERVER=127.0.0.1
-
 couch1dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 couch2dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 couch3dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
@@ -21,7 +17,7 @@ export DB2_DATA=$couch2dir
 export DB3_DATA=$couch3dir
 export COUCH_PORT=25984
 export COUCH_CLUSTER_PORT=25986
-export COUCH_URL=http://$user:$password@$COUCHDB_SERVER:$COUCH_PORT
+export COUCH_URL=http://$user:$password@127.0.0.1:$COUCH_PORT
 
 waitForStatus() {
   count=0
@@ -58,6 +54,8 @@ docker run -d -p $COUCH_PORT:5984 -p $COUCH_CLUSTER_PORT:5986 --name test-couchd
 waitForStatus $COUCH_URL 200
 node ./scripts/generate-documents $jsondataddir
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
+# export env for 4.x couch
+export $(node ../../bin/get-env.js | xargs)
 docker rm -f -v test-couchdb
 
 # launch cht 4.x CouchDb cluster
@@ -67,11 +65,11 @@ waitForCluster $COUCH_URL
 
 # generate shard matrix
 # this is an object that assigns every shard to one of the nodes
-shard_matrix=$( node ../../bin/generate-shard-distribution-matrix.js)
+shard_matrix=$(node ../../bin/generate-shard-distribution-matrix.js)
 file_matrix="{\"couchdb@couchdb.1\":\"$couch1dir\",\"couchdb@couchdb.2\":\"$couch2dir\",\"couchdb@couchdb.3\":\"$couch3dir\"}"
 echo $shard_matrix
 # moves shard data files to their corresponding nodes, according to the matrix
-node ../../bin/distribute-shards.js $shard_matrix $file_matrix
+node ./scripts/distribute-shards.js $shard_matrix $file_matrix
 # change database metadata to match the shard physical locations
 node ../../bin/move-shards.js $shard_matrix
 # test that data exists, database shard maps are correct and view indexes are preserved

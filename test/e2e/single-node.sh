@@ -9,15 +9,10 @@ password=pass
 couchdir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 jsondataddir=$(mktemp -d -t json-XXXXXXXXXX)
 
-export COUCHDB_USER=$user
-export COUCHDB_PASSWORD=$password
-export COUCHDB_SERVER=127.0.0.1
-
 export DB1_DATA=$couchdir
 export COUCH_PORT=25984
 export COUCH_CLUSTER_PORT=25986
-export COUCH_URL=http://$user:$password@$COUCHDB_SERVER:$COUCH_PORT
-
+export COUCH_URL=http://$user:$password@127.0.0.1:$COUCH_PORT
 
 waitForStatus() {
   count=0
@@ -39,13 +34,15 @@ docker run -d -p 25984:5984 -p 25986:5986 --name test-couchdb -e COUCHDB_USER=$u
 waitForStatus $COUCH_URL 200
 node ./scripts/generate-documents $jsondataddir
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
+# export env for 4.x couch
+export $(node ../../bin/get-env.js | xargs)
 docker rm -f -v test-couchdb
 
 # launch cht 4.x CouchDb single node
 docker-compose -f ./scripts/couchdb-single.yml up -d
 waitForStatus $COUCH_URL 200
 # change database metadata to match new node name
-node ../../bin/move-node.js nonode@nohost couchdb@127.0.0.1
+node ../../bin/move-node.js
 # test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir
 
