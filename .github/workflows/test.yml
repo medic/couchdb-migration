@@ -25,6 +25,5 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: 16.x
-      - run: npm ci && npm link
       - run: npm run e2e-single-node
       - run: npm run e2e-multi-node
