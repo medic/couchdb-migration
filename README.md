@@ -5,8 +5,7 @@ Also, facilitates moving data within a CHT 4.x CouchDb cluster.
 
 #### Installation
 ```shell
-npm ci
-npm link
+docker-compose up
 ```
 
 #### API: 
@@ -19,17 +18,17 @@ Run this while running 3.x CouchDb. Outputs list of environment variables that a
 Usage:
 ```shell
 export COUCH_URL=http://admin:pass@127.0.0.1:5984
-get-env
+docker-compose run couch-migration get-env
 ```
 
 You can save the output in an env file:
 ```shell
-get-env > .env
+docker-compose run couch-migration get-env > .env
 ```
 
 or export every line for usage in the current terminal:
 ```shell
-export $(get-env | xargs)
+export $(docker-compose run couch-migration get-env | xargs)
 ```
 
 #### move-node
@@ -44,7 +43,7 @@ Usage
 ```shell
 export COUCH_URL=http://admin:pass@127.0.0.1:5984
 export COUCH_CLUSTER_PORT=5986
-move-node
+docker-compose run couch-migration move-node
 ```
 
 #### generate-shard-distribution-matrix
@@ -59,7 +58,7 @@ Run this after starting 4.x CouchDb.
 
 Usage:
 ```shell
-shard_matrix=$(generate-shard-distribution-matrix)
+shard_matrix=$(docker-compose run couch-migration generate-shard-distribution-matrix)
 echo $shard_matrix
 ```
 
@@ -93,33 +92,35 @@ Updates every databases' metadata to assign shards to the correct node, accordin
 Usage
 ```shell
 shard_matrix=$(generate-shard-distribution-matrix)
-move-shards $shard_matrix
+docker-compose run couch-migration move-shards $shard_matrix
 ```
 
 ### Single Node example
 
-TODO:
-Still requires instructions for exporting CouchDb data paths
+#### Note
+When starting 4.x CouchDb, you should mount the same data volume that 3.x CouchDb was using.
 
 ```shell
-get-env > /path/to/docker-compose/.env
-<stop 3.x Couchdb>
+<start 3.x CouchDb>
+docker-compose run couch-migration get-env > /path/to/docker-compose/.env
+<stop 3.x CouchDb>
 docker-compose -f ./path/to/docker-compose/couchdb-single.yml up -d
 <wait for CouchDb to be up>
-move-node
+docker-compose run couch-migration move-node
 ```
 
 ### Clustered example
 
-TODO:
-Still requires instructions for exporting CouchDb data paths and creating data folder for each node
+#### Note
+When starting 4.x CouchDb, you should mount the data 3.x CouchDb data volume to the main CouchDb node, and create two more folders/volumes for the other nodes.
 
 ```shell
-get-env > /path/to/docker-compose/.env
+<start 3.x CouchDb>
+docker-compose run couch-migration get-env > /path/to/docker-compose/.env
 <stop 3.x Couchdb>
 docker-compose -f ./path/to/docker-compose/couchdb-cluster.yml up -d
 <wait for CouchDb to be up>
-shard_matrix=$(generate-shard-distribution-matrix)
-<move shard and .shard folders to distributed nodes according to the matrix>
-move-shards $shard_matrix
+shard_matrix=$(docker-compose run couch-migration generate-shard-distribution-matrix)
+<move shard and .shard folders to distributed nodes according to the shard_matrix from the step above>
+docker-compose run couch-migration move-shards $shard_matrix
 ```
