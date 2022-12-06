@@ -1,5 +1,4 @@
-FROM node:current-alpine3.15
+FROM node:16.18.1-alpine3.16
 
 COPY . /app
-RUN cd app && npm ci --omit=dev
-ENTRYPOINT ["node", "/app/src/index.js"]
+RUN cd app && npm ci --omit=dev && npm link
