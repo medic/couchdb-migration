@@ -1,8 +1,7 @@
 {
-  "name": "cht-data-migration",
+  "name": "couchdb-migration",
   "version": "1.0.0",
-  "description": "",
-  "main": "src/index.js",
+  "description": "Tool to help in migrating data within a CouchDb cluster.",
   "scripts": {
     "eslint": "eslint --color --cache ./src ./test",
     "unit": "mocha ./test/unit/**/*.js --config ./test/unit/mocharc.js",
@@ -21,18 +20,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dianabarsan/cht-data-migration.git"
+    "url": "git+https://github.com/medic/couchdb-migration.git"
   },
   "author": "Diana Barsan",
   "license": "AGPL-3.0-only",
   "bugs": {
-    "url": "https://github.com/dianabarsan/cht-data-migration/issues"
+    "url": "https://github.com/medic/couchdb-migration/issues"
   },
   "engines": {
     "node": ">=16.12.0",
     "npm": ">=8.3.1"
   },
-  "homepage": "https://github.com/dianabarsan/cht-data-migration#readme",
+  "homepage": "https://github.com/medic/couchdb-migration#readme",
   "devDependencies": {
     "@medic/eslint-config": "^1.1.0",
     "chai": "^4.3.6",
