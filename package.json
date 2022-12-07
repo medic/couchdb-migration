@@ -12,6 +12,7 @@
   },
   "bin": {
     "generate-shard-distribution-matrix": "bin/generate-shard-distribution-matrix.js",
+    "shard-move-instructions": "bin/shard-move-instructions.js",
     "get-env": "bin/get-env.js",
     "move-node": "bin/move-node.js",
     "move-shard": "bin/move-shard.js",
