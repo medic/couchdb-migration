@@ -4,7 +4,7 @@ const [,, shardMatrixJson ] = process.argv;
 
 (() => {
   if (!shardMatrixJson) {
-    console.error('Please pass the shard distribution matrix asn the first argument to to this command');
+    console.error('Please pass the shard distribution matrix as the first argument to this command.');
     process.exit(1);
   }
 
@@ -17,7 +17,7 @@ const [,, shardMatrixJson ] = process.argv;
       log.push(`Move <mainNode-Path>/.shards/${shard} to <${toNode}-path>/.shards/${shard}`);
     }
 
-    log.map(entry => console.info(entry));
+    log.forEach(entry => console.info(entry));
   } catch (err) {
     console.error('Invalid shard matrix', err);
     process.exit(1);
