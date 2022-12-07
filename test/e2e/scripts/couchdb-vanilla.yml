@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  couchdb.one:
+  couchdb-1.local:
     image: apache/couchdb:2.3.1
     volumes:
       - ${DB1_DATA}:/opt/couchdb/data

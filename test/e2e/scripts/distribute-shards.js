@@ -13,7 +13,7 @@ const sameShards = (shards, dotShards) => {
 };
 
 const distributeShards = async (shardMatrix, fileMatrix) => {
-  const mainPath = fileMatrix['couchdb@couchdb.one'];
+  const mainPath = fileMatrix['couchdb@couchdb-1.local'];
 
   const shards = await fs.readdir(path.join(mainPath, SHARDS));
   const dotShards = await fs.readdir(path.join(mainPath, DOT_SHARDS));

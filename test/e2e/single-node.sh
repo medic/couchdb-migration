@@ -16,7 +16,7 @@ export COUCHDB_PASSWORD=$password
 export COUCH_PORT=25984
 export COUCH_CLUSTER_PORT=25986
 export HOST_COUCH_URL=http://$user:$password@127.0.0.1:$COUCH_PORT
-export COUCH_URL=http://$user:$password@couchdb.one:$COUCH_PORT
+export COUCH_URL=http://$user:$password@couchdb-1.local:$COUCH_PORT
 
 waitForStatus() {
   count=0
@@ -31,7 +31,7 @@ waitForStatus() {
 }
 
 # cleanup from last test, in case of interruptions
-docker rm -f -v scripts-couchdb.one-1
+docker rm -f -v scripts-couchdb-1.local-1
 
 # create docker network
 docker network create $CHT_NETWORK || true
