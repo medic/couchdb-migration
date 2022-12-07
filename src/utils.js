@@ -1,13 +1,14 @@
 const fetch = require('node-fetch');
-const { COUCH_URL, COUCH_CLUSTER_PORT } = process.env;
+const { COUCH_URL } = process.env;
 
 if (!COUCH_URL) {
   throw new Error('Env variable COUCH_URL must be set');
 }
 
 const couchUrl = new URL(COUCH_URL);
+couchUrl.port = 5984;
 const couchClusterUrl = new URL(couchUrl);
-couchClusterUrl.port = COUCH_CLUSTER_PORT || 5986;
+couchClusterUrl.port = 5986;
 
 const getUrl = (path, cluster, query) => {
   const url = new URL(cluster ? couchClusterUrl : couchUrl);
@@ -42,8 +43,7 @@ const request = async ({ url, json = true, ...moreOpts }) => {
     throw new HTTPResponseError(response);
   }
 
-  const data = json ? await response.json() : await response.text();
-  return data;
+  return json ? await response.json() : await response.text();
 };
 
 const getDbs = async () => {

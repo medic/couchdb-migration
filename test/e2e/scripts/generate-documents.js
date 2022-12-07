@@ -3,7 +3,7 @@ const uuid = require('uuid').v4;
 const fs = require('fs').promises;
 const path = require('path');
 
-const url = process.env.COUCH_URL;
+const url = process.env.HOST_COUCH_URL;
 const [,,dataPath] = process.argv;
 
 // const nbrDatabases = 4;

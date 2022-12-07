@@ -1,6 +1,6 @@
 const rpn = require('request-promise-native');
 const path = require('path');
-const url = process.env.COUCH_URL;
+const url = process.env.HOST_COUCH_URL;
 
 const [,,dataPath, shardMatrixJson] = process.argv;
 const shardMatrix = shardMatrixJson && JSON.parse(shardMatrixJson);

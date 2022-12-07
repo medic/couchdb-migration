@@ -1,14 +1,12 @@
 version: '3.9'
 
 services:
-  cht-data-migration:
+  couch-migration:
     build: .
     networks:
       - cht-net
     environment:
-      - COUCHDB_USER
-      - COUCHDB_PASSWORD
-      - COUCHDB_SERVER=${COUCHDB_SERVER=couchdb}
+      - COUCH_URL
 
 networks:
   cht-net:
