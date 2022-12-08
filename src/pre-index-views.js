@@ -71,6 +71,8 @@ const getStagedDdocs = async (ddocsForDb) => {
     stagedDdocs[dbName] = ddocs.map(ddoc => {
       ddoc._id = ddoc._id.replace('_design/', '_design/:staged:');
       ddoc.version = `preindex-${ddoc.version}`;
+
+      return ddoc;
     });
   }
 
@@ -87,7 +89,7 @@ const saveStagedDdocs = async (stagedDdocs) => {
 const indexView = async (dbName, ddocId, viewName) => {
   do {
     try {
-      const url = utils.getUrl(`/${dbName}/${ddocId}/_view/${viewName}`, false, `limit=1`);
+      const url = utils.getUrl(`/${dbName}/${ddocId}/_view/${viewName}`, false, `limit=1&update_seq=true`);
       return await utils.request({ url });
     } catch (requestError) {
       if (!requestError || !requestError.error || !SOCKET_TIMEOUT_ERROR_CODE.includes(requestError.error.code)) {
@@ -105,8 +107,10 @@ const indexStagedDdocs = async (stagedDdocs) => {
       if (!ddoc.views || !Object.keys(ddoc.views)) {
         continue;
       }
-
-      viewIndexPromises.push(...Object.keys(ddoc.views).map(view => indexView(dbName, ddoc._id, view)));
+      const indexPromises = Object
+        .keys(ddoc.views)
+        .map(view => indexView(dbName, ddoc._id, view));
+      viewIndexPromises.push(...indexPromises);
     }
   }
   await Promise.all(viewIndexPromises);

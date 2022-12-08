@@ -1,4 +1,4 @@
-const utils = require('utils');
+const utils = require('./utils');
 
 const QUERY_TASKS_INTERVAL = 5000;
 // progress bar stretches to match console width.
