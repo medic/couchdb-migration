@@ -34,14 +34,14 @@ const repeatRetry = async (promiseFn) => {
 const checkCouchUp = async () => {
   const isUp = await repeatRetry(isCouchUp);
   if (!isUp) {
-    throw new Error('CouchDb is not up after 100 seconds.')
+    throw new Error('CouchDb is not up after 100 seconds.');
   }
 };
 
 const checkClusterReady = async (nbrNodes) => {
-  const isClusterReady = await repeatRetry(isClusterReady.bind({}, nbrNodes));
-  if (!isClusterReady) {
-    throw new Error('CouchDb Cluster is not ready after 100 seconds. ')
+  const isReady = await repeatRetry(isClusterReady.bind({}, nbrNodes));
+  if (!isReady) {
+    throw new Error('CouchDb Cluster is not ready after 100 seconds.');
   }
 };
 
