@@ -18,9 +18,9 @@ const getUrl = (path, cluster, query) => {
 };
 
 class HTTPResponseError extends Error {
-  constructor(response) {
+  constructor(response, responseData) {
     super(`HTTP Error Response: ${response.status} ${response.statusText}`);
-    this.response = response;
+    this.response = responseData;
     this.status = response.status;
   }
 }
@@ -48,7 +48,7 @@ const request = async ({ url, json = true, ...moreOpts }) => {
     } catch (err) {
       responseData = response;
     }
-    throw new HTTPResponseError(responseData);
+    throw new HTTPResponseError(response, responseData);
   }
 
   return getResponseData(response, json);

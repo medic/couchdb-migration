@@ -17,7 +17,6 @@ const decodeAttachmentData = (data) => {
 
 const getDDocs = async (version) => {
   const buildUrl = `${buildsUrl}/medic:medic:${version}?attachments=true`;
-  console.log(buildUrl);
   let build;
   try {
     build = await utils.request({ url: buildUrl });
