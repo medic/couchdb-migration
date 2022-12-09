@@ -25,6 +25,8 @@ class HTTPResponseError extends Error {
   }
 }
 
+const getResponseData = async (response, json) => json ? await response.json() : await response.text();
+
 const request = async ({ url, json = true, ...moreOpts }) => {
   const opts = { ...moreOpts };
   if (json) {
@@ -40,10 +42,16 @@ const request = async ({ url, json = true, ...moreOpts }) => {
 
   const response = await fetch(url, opts);
   if (!response.ok) {
-    throw new HTTPResponseError(response);
+    let responseData;
+    try {
+      responseData = await getResponseData(response, json);
+    } catch (err) {
+      responseData = response;
+    }
+    throw new HTTPResponseError(responseData);
   }
 
-  return json ? await response.json() : await response.text();
+  return getResponseData(response, json);
 };
 
 const getDbs = async () => {

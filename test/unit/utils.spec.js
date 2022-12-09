@@ -460,7 +460,7 @@ describe('utils', () => {
         .withArgs('http://admin:pass@couchdb-1.local:5984/_node/node1/_config/sec/key')
         .rejects(new Response(JSON.stringify('boom'), { status: 500 }));
 
-      await expect(utils.getConfig()).to.be.rejectedWith(Error, 'Error when getting config');
+      await expect(utils.getConfig('sec', 'key')).to.be.rejectedWith(Error, 'Error when getting config');
     });
   });
 });

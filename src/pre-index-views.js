@@ -1,9 +1,9 @@
 const utils = require('./utils');
 const viewIndexerProgress = require('./view-indexer-progress');
 
-const buildsUrl = 'https://staging.dev.medicmobile.org/_couch/builds_4/';
-const DDOC_DB_RE = /^ddocs\/(.*)\.json$/;
-const SOCKET_TIMEOUT_ERROR_CODE = ['ESOCKETTIMEDOUT', 'ETIMEDOUT'];
+const buildsUrl = 'https://staging.dev.medicmobile.org/_couch/builds_4';
+const DDOC_DB_RE = /^ddocs\/(.+)\.json$/;
+const TIMEOUT_ERROR = 'timeout';
 
 const decodeAttachmentData = (data) => {
   try {
@@ -17,6 +17,7 @@ const decodeAttachmentData = (data) => {
 
 const getDDocs = async (version) => {
   const buildUrl = `${buildsUrl}/medic:medic:${version}?attachments=true`;
+  console.log(buildUrl);
   let build;
   try {
     build = await utils.request({ url: buildUrl });
@@ -32,16 +33,14 @@ const getDDocs = async (version) => {
   const ddocs = Object.keys(build._attachments).filter(attachment => DDOC_DB_RE.test(attachment));
   const ddocsForDb = Object.assign(...ddocs.map(ddoc => {
     const match = ddoc.match(DDOC_DB_RE);
-    const dbName = match && match[1];
-    if (!dbName) {
-      return {};
-    }
+    let dbName = match && match[1];
 
     const attachment = decodeAttachmentData(build._attachments[ddoc].data);
-    if (!attachment || !attachment.docs) {
+    if (!attachment || !attachment.docs || !attachment.docs.length) {
       return {};
     }
 
+    dbName = dbName === 'medic' ? dbName : `medic-${dbName}`;
     return { [dbName]: attachment.docs };
   }));
 
@@ -89,10 +88,10 @@ const saveStagedDdocs = async (stagedDdocs) => {
 const indexView = async (dbName, ddocId, viewName) => {
   do {
     try {
-      const url = utils.getUrl(`/${dbName}/${ddocId}/_view/${viewName}`, false, `limit=1&update_seq=true`);
+      const url = utils.getUrl(`/${dbName}/${ddocId}/_view/${viewName}`, false, `limit=0`);
       return await utils.request({ url });
     } catch (requestError) {
-      if (!requestError || !requestError.error || !SOCKET_TIMEOUT_ERROR_CODE.includes(requestError.error.code)) {
+      if (!requestError || !requestError.response || !TIMEOUT_ERROR.includes(await requestError.response.error)) {
         throw requestError;
       }
     }
