@@ -118,6 +118,7 @@ const preIndexViews = async (version) => {
   const ddocs = await getDDocs(version);
   const stagedDdocs = await getStagedDdocs(ddocs);
   await saveStagedDdocs(stagedDdocs);
+  console.log('Indexing views:');
   const stopQueryingIndexes = viewIndexerProgress.log();
   await indexStagedDdocs(stagedDdocs);
   stopQueryingIndexes();
