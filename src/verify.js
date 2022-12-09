@@ -38,6 +38,7 @@ const verifyDb = async (dbName) => {
   await utils.syncShards(dbName);
 
   const url = utils.getUrl(`${dbName}/_all_docs`, false, 'limit=0');
+  console.log(url);
   const allDocsResponse = await utils.request({ url });
 
   const viewsIndexed = await verifyViews(dbName, allDocsResponse.total_rows);
@@ -57,8 +58,8 @@ const verify = async () => {
     try {
       await verifyDb(dbName);
     } catch (err) {
-      console.error('Error when checking', dbName, err);
-      throw new Error('Verification failed.');
+      console.error('Error when checking database ', dbName, err);
+      throw new Error(`Verification failed for database ${dbName}`);
     }
   }
 };
