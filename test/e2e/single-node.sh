@@ -52,6 +52,7 @@ docker-compose -f ./scripts/couchdb-single.yml up -d
 waitForStatus $HOST_COUCH_URL 200
 # change database metadata to match new node name
 docker-compose -f ../../docker-compose.yml run couch-migration move-node
+docker-compose -f ../../docker-compose.yml run couch-migration verify
 # test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir
 
