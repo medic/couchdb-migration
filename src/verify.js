@@ -38,7 +38,6 @@ const verifyDb = async (dbName) => {
   await utils.syncShards(dbName);
 
   const url = utils.getUrl(`${dbName}/_all_docs`, false, 'limit=0');
-  console.log(url);
   const allDocsResponse = await utils.request({ url });
 
   const viewsIndexed = await verifyViews(dbName, allDocsResponse.total_rows);
