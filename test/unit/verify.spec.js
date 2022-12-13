@@ -28,33 +28,22 @@ describe('verify', () => {
       utils.request
         .withArgs({ url: `${couchUrl}one/_design/one/_view/a?stale=ok&limit=0` })
         .resolves({ total_rows: 1 });
-      utils.request
-        .withArgs({ url: `${couchUrl}one/_design/one/_view/b?stale=ok&limit=0` })
-        .resolves({ total_rows: 2 });
-      utils.request
-        .withArgs({ url: `${couchUrl}one/_design/two/_view/c?stale=ok&limit=0` })
-        .resolves({ total_rows: 4 });
-      utils.request
-        .withArgs({ url: `${couchUrl}one/_design/two/_view/d?stale=ok&limit=0` })
-        .resolves({ total_rows: 12 });
 
       utils.request
         .withArgs({ url: `${couchUrl}two/_design/a/_view/1?stale=ok&limit=0` })
         .resolves({ total_rows: 12 });
-      utils.request
-        .withArgs({ url: `${couchUrl}two/_design/a/_view/2?stale=ok&limit=0` })
-        .resolves({ total_rows: 1 });
-      utils.request
-        .withArgs({ url: `${couchUrl}two/_design/b/_view/3?stale=ok&limit=0` })
-        .resolves({ total_rows: 22 });
-      utils.request
-        .withArgs({ url: `${couchUrl}two/_design/b/_view/4?stale=ok&limit=0` })
-        .resolves({ total_rows: 1 });
 
       await verify.verify();
 
       expect(utils.syncShards.args).to.deep.equal([['one'], ['two']]);
-      expect(utils.request.callCount).to.equal(12);
+      expect(utils.request.args).to.deep.equal([
+        [{ url: `${couchUrl}one/_all_docs?limit=0` }],
+        [{ url: `${couchUrl}one/_design_docs?include_docs=true` }],
+        [{ url: `${couchUrl}one/_design/one/_view/a?stale=ok&limit=0` }],
+        [{ url: `${couchUrl}two/_all_docs?limit=0` }],
+        [{ url: `${couchUrl}two/_design_docs?include_docs=true` }],
+        [{ url: `${couchUrl}two/_design/a/_view/1?stale=ok&limit=0` }],
+      ]);
     });
 
     it('should handle databases with no docs', async () => {

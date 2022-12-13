@@ -8,9 +8,10 @@ const verifyViews = async (dbName, numDocs) => {
   const url = utils.getUrl(`${dbName}/_design_docs`, false, 'include_docs=true');
   const response = await utils.request({ url });
 
-  let viewsIndexed = false;
-  let viewsChecked = false;
-
+  const ddocsWithViews = response.rows.filter(row => row.doc && row.doc.views && Object.keys(row.doc.views).length);
+  if (!ddocsWithViews.length) {
+    return true;
+  }
   for (const { doc: ddoc } of response.rows) {
     if (!ddoc || !ddoc.views) {
       continue;
@@ -18,19 +19,18 @@ const verifyViews = async (dbName, numDocs) => {
 
     const views = Object.keys(ddoc.views);
     for (const view of views) {
-      viewsChecked = true;
       const url = utils.getUrl(`${dbName}/${ddoc._id}/_view/${view}`, false, 'stale=ok&limit=0');
       const viewResponse = await utils.request({ url });
 
       if (viewResponse.total_rows > 0) {
         // at least one view being indexed means that the .shard folders for the database were moved successfully
         // some views might not index any documents
-        viewsIndexed = true;
+        return true;
       }
     }
   }
 
-  return !viewsChecked || (viewsChecked && viewsIndexed);
+  return false;
 };
 
 const verifyDb = async (dbName) => {
