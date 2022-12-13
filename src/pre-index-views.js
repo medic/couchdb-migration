@@ -89,10 +89,12 @@ const indexView = async (dbName, ddocId, viewName) => {
     try {
       const url = utils.getUrl(`/${dbName}/${ddocId}/_view/${viewName}`, false, `limit=0`);
       return await utils.request({ url });
-    } catch (requestError) {
-      if (!requestError || !requestError.response || !TIMEOUT_ERROR.includes(await requestError.response.error)) {
-        throw requestError;
+    } catch (err) {
+      const timeoutError = err && err.response && TIMEOUT_ERROR.includes(err.response.error);
+      if (timeoutError) {
+        continue; // views still indexing - try again
       }
+      throw err;
     }
     // eslint-disable-next-line no-constant-condition
   } while (true);
