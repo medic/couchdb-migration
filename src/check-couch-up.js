@@ -18,17 +18,16 @@ const isClusterReady = async (expectedNodes) => {
 };
 
 const repeatRetry = async (promiseFn) => {
-  let fulfilled;
   let retry = NUM_RETRY;
   do {
-    fulfilled = await promiseFn();
-    if (!fulfilled) {
-      retry--;
-      await new Promise(r => setTimeout(r, TIMEOUT_RETRY));
+    if (await promiseFn()) {
+      return true;
     }
-  } while (retry > 0 && !fulfilled);
+    retry--;
+    await new Promise(r => setTimeout(r, TIMEOUT_RETRY));
+  } while (retry > 0);
 
-  return fulfilled;
+  return false;
 };
 
 const checkCouchUp = async () => {
