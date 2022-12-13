@@ -1,7 +1,7 @@
 {
   "name": "couchdb-migration",
   "version": "1.0.0",
-  "description": "Tool to help in migrating data within a CouchDb cluster.",
+  "description": "Tool that interfaces with CouchDB to help migrating data within a cluster.",
   "scripts": {
     "eslint": "eslint --color --cache ./src ./test",
     "unit": "mocha ./test/unit/**/*.js --config ./test/unit/mocharc.js",
@@ -19,7 +19,8 @@
     "move-shards": "bin/move-shards.js",
     "remove-node": "bin/remove-node.js",
     "check-couchdb-up": "bin/check-couchdb-up.js",
-    "pre-index-views": "bin/pre-index-views.js"
+    "pre-index-views": "bin/pre-index-views.js",
+    "verify": "bin/verify.js"
   },
   "repository": {
     "type": "git",

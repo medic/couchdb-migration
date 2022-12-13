@@ -57,6 +57,7 @@ docker-compose -f ../../docker-compose.yml run couch-migration shard-move-instru
 node ./scripts/distribute-shards.js $shard_matrix $file_matrix
 # change database metadata to match the shard physical locations
 docker-compose -f ../../docker-compose.yml run couch-migration move-shards $shard_matrix
+docker-compose -f ../../docker-compose.yml run couch-migration verify
 # test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir $shard_matrix
 
