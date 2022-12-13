@@ -18,6 +18,7 @@
     "move-shard": "bin/move-shard.js",
     "move-shards": "bin/move-shards.js",
     "remove-node": "bin/remove-node.js",
+    "check-couchdb-up": "bin/check-couchdb-up.js",
     "pre-index-views": "bin/pre-index-views.js"
   },
   "repository": {
