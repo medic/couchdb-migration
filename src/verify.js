@@ -12,13 +12,8 @@ const verifyViews = async (dbName, numDocs) => {
   if (!ddocsWithViews.length) {
     return true;
   }
-  for (const { doc: ddoc } of response.rows) {
-    if (!ddoc || !ddoc.views) {
-      continue;
-    }
-
-    const views = Object.keys(ddoc.views);
-    for (const view of views) {
+  for (const { doc: ddoc } of ddocsWithViews) {
+    for (const view of Object.keys(ddoc.views)) {
       const url = utils.getUrl(`${dbName}/${ddoc._id}/_view/${view}`, false, 'stale=ok&limit=0');
       const viewResponse = await utils.request({ url });
 
