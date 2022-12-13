@@ -26,19 +26,38 @@ const checkDocs = async (db) => {
     console.error(errors);
     throw new Error('Found invalid docs');
   }
-
-  return docs.length;
 };
 
-const checkViewIndexes = async (db, nbrDocs) => {
-  const t = Date.now();
-  const staleViewUrl = `${url}/${db}/_design/test/_view/view?stale=ok&update_seq=true&limit=0`;
-  console.log(staleViewUrl);
-  console.log('view request took', Date.now() - t);
-  const view = await rpn.get({ url: staleViewUrl, json: true });
-  view.db = db;
-  console.log(JSON.stringify(view, null, 2));
-  return view.total_rows === nbrDocs;
+const getViews = async (dbName) => {
+  const ddocs = await rpn.get({ url: `${url}/${dbName}/_design_docs`, json: true, qs: { include_docs: true } });
+  const viewDdocs = [];
+  ddocs.rows.forEach(row => {
+    const views = Object.keys(row.doc.views);
+    viewDdocs.push(...views.map(view => ([ row.doc._id, view ])));
+  });
+  return viewDdocs;
+};
+
+const checkViewIndexes = async (db) => {
+  let result = true;
+  const views = await getViews(db);
+  for (const [ddoc, view] of views) {
+    const staleViewUrl = `${url}/${db}/${ddoc}/_view/${view}?stale=ok&update_seq=true&limit=0`;
+    console.log(staleViewUrl);
+    const staleViewResult = await rpn.get({ url: staleViewUrl, json: true });
+    const liveViewUrl = `${url}/${db}/${ddoc}/_view/${view}?&update_seq=true&limit=0`;
+    const liveViewResult = await rpn.get({ url: liveViewUrl, json: true });
+
+    if (staleViewResult.total_rows !== liveViewResult.total_rows) {
+      staleViewResult.db = db;
+      staleViewResult.view = view;
+      staleViewResult.ddoc = ddoc;
+      console.log(JSON.stringify(staleViewResult, null, 2));
+      result = false;
+    }
+  }
+
+  return result;
 };
 
 const checkSharding = async (db) => {
@@ -69,8 +88,8 @@ const checkSharding = async (db) => {
     }
 
     await syncShards(db);
-    const nbrDocs = await checkDocs(db);
-    if (!await checkViewIndexes(db, nbrDocs)) {
+    await checkDocs(db);
+    if (!await checkViewIndexes(db)) {
       viewErrors.push(db);
     }
     if (!await checkSharding(db)) {

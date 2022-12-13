@@ -18,12 +18,14 @@ const getUrl = (path, cluster, query) => {
 };
 
 class HTTPResponseError extends Error {
-  constructor(response) {
+  constructor(response, responseData) {
     super(`HTTP Error Response: ${response.status} ${response.statusText}`);
-    this.response = response;
+    this.response = responseData;
     this.status = response.status;
   }
 }
+
+const getResponseData = async (response, json) => json ? await response.json() : await response.text();
 
 const request = async ({ url, json = true, ...moreOpts }) => {
   const opts = { ...moreOpts };
@@ -40,10 +42,16 @@ const request = async ({ url, json = true, ...moreOpts }) => {
 
   const response = await fetch(url, opts);
   if (!response.ok) {
-    throw new HTTPResponseError(response);
+    let responseData;
+    try {
+      responseData = await getResponseData(response, json);
+    } catch (err) {
+      responseData = response;
+    }
+    throw new HTTPResponseError(response, responseData);
   }
 
-  return json ? await response.json() : await response.text();
+  return getResponseData(response, json);
 };
 
 const getDbs = async () => {
