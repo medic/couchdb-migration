@@ -131,6 +131,20 @@ shard_matrix=$(generate-shard-distribution-matrix)
 docker-compose run couch-migration move-shards $shard_matrix
 ```
 
+### pre-index-views
+
+Used to pre-index target 4.x CouchDb views while still running 3.x CouchDb. This will reduce downtime when you launch 4.x.
+Requires `COUCH_URL` environment variable to be set. Requires that target 4.x version to be passed as the first parameter (for example: `4.0.1`). 
+
+Usage
+```shell
+docker-compose run couch-migration pre-index-views <target 4.x version>
+```
+
+Runtime of this command will depend on the size of the database, as it will install and index all design documents and views from the target 4.x CHT version. 
+The command will output view indexing progress. Interrupting this command will not interrupt view indexing (that can only be achieved by restarting CouchDb). 
+The design documents installed by this command will not overwrite the design documents that are used by your 3.x CHT installation.  
+
 ### Single Node example
 
 #### Note
@@ -138,6 +152,7 @@ When starting 4.x CouchDb, you should mount the same data volume that 3.x CouchD
 
 ```shell
 <start 3.x CouchDb>
+docker-compose run couch-migration pre-index-views 4.1.0
 docker-compose run couch-migration get-env > /path/to/docker-compose/.env
 <stop 3.x CouchDb>
 docker-compose -f ./path/to/docker-compose/couchdb-single.yml up -d
@@ -155,6 +170,7 @@ The couch-migration script does not know which of the nodes is the main node.
 
 ```shell
 <start 3.x CouchDb>
+docker-compose run couch-migration pre-index-views 4.2.0
 docker-compose run couch-migration get-env > /path/to/docker-compose/.env
 <stop 3.x Couchdb>
 docker-compose -f ./path/to/docker-compose/couchdb-cluster.yml up -d

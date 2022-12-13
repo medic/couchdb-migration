@@ -2,7 +2,6 @@
 set -e
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $BASEDIR
-npm link
 
 user=admin
 password=pass
@@ -36,6 +35,8 @@ docker-compose -f ../../docker-compose.yml up --build
 docker-compose -f ./scripts/couchdb-vanilla.yml up -d
 docker-compose -f ../../docker-compose.yml run couch-migration check-couchdb-up
 node ./scripts/generate-documents $jsondataddir
+# pre-index 4.0.1 views
+docker-compose -f ../../docker-compose.yml run couch-migration pre-index-views 4.0.1
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
 # export env for 4.x couch
 export $(docker-compose -f ../../docker-compose.yml run couch-migration get-env | xargs)
