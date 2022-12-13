@@ -17,7 +17,8 @@
     "move-node": "bin/move-node.js",
     "move-shard": "bin/move-shard.js",
     "move-shards": "bin/move-shards.js",
-    "remove-node": "bin/remove-node.js"
+    "remove-node": "bin/remove-node.js",
+    "pre-index-views": "bin/pre-index-views.js"
   },
   "repository": {
     "type": "git",
