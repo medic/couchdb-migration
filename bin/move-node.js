@@ -10,6 +10,7 @@ const { removeNode } = require('../src/remove-node');
       await removeNode(node);
     }
     await syncShards();
+    console.log('Node moved successfully');
   } catch (err) {
     console.error('An unexpected error occurred', err);
     process.exit(1);
