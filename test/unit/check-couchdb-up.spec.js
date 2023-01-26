@@ -1,5 +1,6 @@
 const checkCouchUp = require('../../src/check-couch-up');
 const utils = require('../../src/utils');
+const { setupUtils } = require('./mocha-hooks');
 
 let clock;
 let originalSetTimeout;
@@ -7,10 +8,12 @@ const TIMEOUT_RETRY = 1000; // 1 second
 const MAX_RETRIES = 100;
 
 describe('check-couch-up', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await setupUtils(utils);
     originalSetTimeout = setTimeout;
     clock = sinon.useFakeTimers();
   });
+
   afterEach(() => {
     clock.restore();
   });

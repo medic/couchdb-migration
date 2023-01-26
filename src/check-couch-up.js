@@ -3,8 +3,8 @@ const NUM_RETRY = 100;
 const TIMEOUT_RETRY = 1000; // 1 second
 
 const isCouchUp = async () => {
-  const url = utils.getUrl('/');
   try {
+    const url = await utils.getUrl('/');
     await utils.request({ url });
     return true;
   } catch (err) {

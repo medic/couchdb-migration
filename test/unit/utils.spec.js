@@ -4,8 +4,9 @@ const { Response } = require('node-fetch');
 let utils;
 let fetchStub;
 
-const stubProcess = ({ server= 'couchdb-1.local', user= 'admin', pass= 'pass' }={}) => {
-  process.env.COUCH_URL = `http://${user}:${pass}@${server}:5984`;
+const stubProcess = ({ server= 'couchdb-1.local', user= 'admin', pass= 'pass', port=5984, cport }={}) => {
+  process.env.COUCH_URL = `http://${user}:${pass}@${server}:${port}`;
+  process.env.COUCH_CLUSTER_PORT = cport;
   utils = rewire('../../src/utils');
   fetchStub = sinon.stub();
   utils.__set__('fetch', fetchStub);
@@ -21,30 +22,151 @@ describe('utils', () => {
     stubProcess();
   });
 
-  it('should throw an error if env is not set', () => {
-    try {
-      process.env.COUCH_URL = '';
-      utils = rewire('../../src/utils');
-      expect.fail();
-    } catch (err) {
-      expect(err.message).to.equal('Env variable COUCH_URL must be set');
-    }
+  describe('prepareCouchUrl', () => {
+    it('should assign couch urls with custom ports', async () => {
+      stubProcess({ port: 6984, cport: 6986 });
+      fetchStub.rejects(new Response('', { status: 503 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:6984/').resolves(new Response('""', { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:6986/').resolves(new Response('""', { status: 200 }));
+
+      await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:6986/', {}],
+        ['http://admin:pass@couchdb-1.local:5986/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6986/'));
+    });
+
+    it('should ssign couch urls with mixed ports', async () => {
+      stubProcess({ port: 6984, cport: 6986 });
+      fetchStub.rejects(new Response('', { status: 503 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:6984/').resolves(new Response('""', { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5986/').resolves(new Response('""', { status: 200 }));
+
+      await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:6986/', {}],
+        ['http://admin:pass@couchdb-1.local:5986/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
+    });
+
+    it('should assign couch urls with default ports', async () => {
+      stubProcess({ port: 6984, cport: 6986 });
+      fetchStub.rejects(new Response('', { status: 503 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/').resolves(new Response('""', { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5986/').resolves(new Response('""', { status: 200 }));
+
+      await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:6986/', {}],
+        ['http://admin:pass@couchdb-1.local:5986/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
+    });
+
+    it('should assign couch urls when default ports are passed via env', async () => {
+      stubProcess();
+      fetchStub.rejects(new Response('', { status: 503 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/').resolves(new Response('""', { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5986/').resolves(new Response('""', { status: 200 }));
+
+      await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:5986/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
+    });
+
+    it('should throw error when couch cannot be reached', async () => {
+      stubProcess({ port: 6984, cport: 6986 });
+      fetchStub.rejects(new Response('""', { status: 503 }));
+
+      await expect(utils.prepareCouchUrl()).to.be.rejectedWith(
+        Error,
+        'Failed to connect to CouchDb. Please verify that the COUCH_URL provided is reachable through docker network.'
+      );
+
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.equal(undefined);
+      expect(utils.__get__('couchClusterUrl')).to.equal(undefined);
+    });
+
+    it('should do nothing if urls are already set', async () => {
+      stubProcess();
+      fetchStub.callsFake(() => new Response('""', { status: 200 }));
+
+      await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(4);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
+
+      await utils.prepareCouchUrl();
+      await utils.prepareCouchUrl();
+      await utils.prepareCouchUrl();
+      await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(4);
+    });
   });
 
   describe('getUrl', () => {
-    it('should return url for httpd', () => {
-      const url = utils.getUrl('mypath');
+    it('should throw an error if env is not set', async () => {
+      try {
+        process.env.COUCH_URL = '';
+        utils = rewire('../../src/utils');
+        await utils.getUrl('thing');
+        expect.fail('Should have thrown');
+      } catch (err) {
+        expect(err.message).to.equal('Env variable COUCH_URL must be set');
+      }
+    });
+
+    it('should return url for httpd', async () => {
+      fetchStub.callsFake(() => new Response('', { status: 200 }));
+
+      const url = await utils.getUrl('mypath');
       expect(url).to.equal('http://admin:pass@couchdb-1.local:5984/mypath');
     });
 
-    it('should return url for chttp', () => {
-      const url = utils.getUrl('a_path', true);
+    it('should return url for chttp', async () => {
+      fetchStub.callsFake(() => new Response('', { status: 200 }));
+
+      const url = await utils.getUrl('a_path', true);
       expect(url).to.equal('http://admin:pass@couchdb-1.local:5986/a_path');
     });
 
-    it('should take server, pass, and user from env', () => {
+    it('should take server, pass, and user from env', async () => {
       stubProcess({ server: 'couch-2.local', user: 'medic', pass: 'pwd' });
-      const url = utils.getUrl('a_path', true);
+      fetchStub.callsFake(() => new Response('', { status: 200 }));
+
+      const url = await utils.getUrl('a_path', true);
       expect(url).to.equal('http://medic:pwd@couch-2.local:5986/a_path');
     });
   });
@@ -127,340 +249,350 @@ describe('utils', () => {
     });
   });
 
-  describe('getDbs', () => {
-    it('should return the response of the _dbs endpoint', async () => {
-      const dbs = ['one', 'two', 'three'];
-      fetchStub.resolves(new Response(JSON.stringify(dbs), { status: 200 }));
-
-      const result = await utils.getDbs();
-
-      expect(result).to.deep.equal(dbs);
-
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5984/_all_dbs',
-        { headers: jsonHeaders }
-      ]);
+  describe('db query methods', () => {
+    beforeEach(async () => {
+      fetchStub.callsFake(() => new Response('', { status: 200 }));
+      await utils.prepareCouchUrl();
+      sinon.resetHistory();
     });
 
-    it('should throw errors', async () => {
-      fetchStub.rejects({ an: 'error' });
-      await expect(utils.getDbs()).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
-    });
-  });
+    describe('getDbs', () => {
+      it('should return the response of the _dbs endpoint', async () => {
+        const dbs = ['one', 'two', 'three'];
+        fetchStub.resolves(new Response(JSON.stringify(dbs), { status: 200 }));
 
-  describe('getMembership', () => {
-    it('should return the response of the _membership endpoint', async () => {
-      const membership = { all_nodes: ['1', '2'], cluster_nodes: ['1', '2', '3']};
-      fetchStub.resolves(new Response(JSON.stringify(membership), { status: 200 }));
+        const result = await utils.getDbs();
 
-      const result = await utils.getMembership();
+        expect(result).to.deep.equal(dbs);
 
-      expect(result).to.deep.equal(membership);
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5984/_all_dbs',
+          { headers: jsonHeaders }
+        ]);
+      });
 
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5984/_membership',
-        { headers: jsonHeaders }
-      ]);
-    });
-
-    it('should throw request errors', async () => {
-      fetchStub.rejects({ an: 'error' });
-      await expect(utils.getMembership()).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
-    });
-  });
-
-  describe('getDbMetadata', () => {
-    it('should return db metadata ', async () => {
-      const metadata = { the: 'metadata' };
-      fetchStub.resolves(new Response(JSON.stringify(metadata), { status: 200 }));
-
-      const result = await utils.getDbMetadata('thedb');
-
-      expect(result).to.deep.equal(metadata);
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5986/_dbs/thedb',
-        { headers: jsonHeaders }
-      ]);
+      it('should throw errors', async () => {
+        fetchStub.rejects({ an: 'error' });
+        await expect(utils.getDbs()).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
+      });
     });
 
-    it('should throw an error when no db name provided', async () => {
-      await expect(utils.getDbMetadata()).to.be.rejectedWith(Error, 'Missing database name');
+    describe('getMembership', () => {
+      it('should return the response of the _membership endpoint', async () => {
+        const membership = { all_nodes: ['1', '2'], cluster_nodes: ['1', '2', '3']};
+        fetchStub.resolves(new Response(JSON.stringify(membership), { status: 200 }));
+
+        const result = await utils.getMembership();
+
+        expect(result).to.deep.equal(membership);
+
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5984/_membership',
+          { headers: jsonHeaders }
+        ]);
+      });
+
+      it('should throw request errors', async () => {
+        fetchStub.rejects({ an: 'error' });
+        await expect(utils.getMembership()).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
+      });
     });
 
-    it('should throw request errors', async () => {
-      fetchStub.rejects({ an: 'error' });
-      await expect(utils.getDbMetadata('db')).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
-    });
-  });
+    describe('getDbMetadata', () => {
+      it('should return db metadata ', async () => {
+        const metadata = { the: 'metadata' };
+        fetchStub.resolves(new Response(JSON.stringify(metadata), { status: 200 }));
 
-  describe('updateDbMetadata', () => {
-    it('should save the updated metadata', async () => {
-      const metadata = { the: 'metadata' };
-      const response = { ok: true, rev: 22 };
-      fetchStub.resolves(new Response(JSON.stringify(response), { status: 200 }));
+        const result = await utils.getDbMetadata('thedb');
 
-      const result = await utils.updateDbMetadata('thedb', metadata);
+        expect(result).to.deep.equal(metadata);
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5986/_dbs/thedb',
+          { headers: jsonHeaders }
+        ]);
+      });
 
-      expect(result).to.deep.equal(response);
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5986/_dbs/thedb',
-        {
-          method: 'PUT',
-          body: JSON.stringify(metadata),
-          headers: jsonHeaders,
-        }
-      ]);
-    });
+      it('should throw an error when no db name provided', async () => {
+        await expect(utils.getDbMetadata()).to.be.rejectedWith(Error, 'Missing database name');
+      });
 
-    it('should throw an error when no db name provided', async () => {
-      await expect(utils.updateDbMetadata()).to.be.rejectedWith(Error, 'Missing database name');
+      it('should throw request errors', async () => {
+        fetchStub.rejects({ an: 'error' });
+        await expect(utils.getDbMetadata('db')).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
+      });
     });
 
-    it('should throw an error when no metadata provided', async () => {
-      await expect(utils.updateDbMetadata('name')).to.be.rejectedWith(Error, 'Missing or invalid database metadata');
+    describe('updateDbMetadata', () => {
+      it('should save the updated metadata', async () => {
+        const metadata = { the: 'metadata' };
+        const response = { ok: true, rev: 22 };
+        fetchStub.resolves(new Response(JSON.stringify(response), { status: 200 }));
+
+        const result = await utils.updateDbMetadata('thedb', metadata);
+
+        expect(result).to.deep.equal(response);
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5986/_dbs/thedb',
+          {
+            method: 'PUT',
+            body: JSON.stringify(metadata),
+            headers: jsonHeaders,
+          }
+        ]);
+      });
+
+      it('should throw an error when no db name provided', async () => {
+        await expect(utils.updateDbMetadata()).to.be.rejectedWith(Error, 'Missing database name');
+      });
+
+      it('should throw an error when no metadata provided', async () => {
+        await expect(utils.updateDbMetadata('name')).to.be.rejectedWith(Error, 'Missing or invalid database metadata');
+      });
+
+      it('should throw an error when invalid metadata provided', async () => {
+        await expect(utils.updateDbMetadata('name')).to.be.rejectedWith(Error, 'Missing or invalid database metadata');
+      });
+
+      it('should throw request errors', async () => {
+        fetchStub.rejects({ an: 'error' });
+        await expect(
+          utils.updateDbMetadata('db', { m: 'd' })
+        ).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
+      });
     });
 
-    it('should throw an error when invalid metadata provided', async () => {
-      await expect(utils.updateDbMetadata('name')).to.be.rejectedWith(Error, 'Missing or invalid database metadata');
+    describe('getNodeInfo', () => {
+      it('should return node info', async () => {
+        const nodeInfo = { _id: 'couchdb@couchdb-1.local', _rev: 'rev' };
+        fetchStub.resolves(new Response(JSON.stringify(nodeInfo), { status: 200 }));
+
+        const response = await utils.getNodeInfo(nodeInfo._id);
+
+        expect(response).to.deep.equal(nodeInfo);
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5986/_nodes/couchdb@couchdb-1.local',
+          { headers: jsonHeaders }
+        ]);
+      });
+
+      it('should throw error if missing node name', async () => {
+        await expect(utils.getNodeInfo()).to.be.rejectedWith(Error, 'Missing node name');
+      });
+
+      it('should throw error if getting info fails', async () => {
+        fetchStub.resolves(new Response(JSON.stringify({}), { status: 404 }));
+        await expect(utils.getNodeInfo('name')).to.be.rejectedWith(Error, 'Error while getting node info');
+      });
     });
 
-    it('should throw request errors', async () => {
-      fetchStub.rejects({ an: 'error' });
-      await expect(utils.updateDbMetadata('db', { m: 'd' })).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
-    });
-  });
+    describe('deleteNode', () => {
+      it('should delete node', async () => {
+        const nodeInfo = { _id: 'couchdb@couchdb-1.local', _rev: 'the-rev' };
+        fetchStub.resolves(new Response(JSON.stringify(nodeInfo), { status: 200 }));
 
-  describe('getNodeInfo', () => {
-    it('should return node info', async () => {
-      const nodeInfo = { _id: 'couchdb@couchdb-1.local', _rev: 'rev' };
-      fetchStub.resolves(new Response(JSON.stringify(nodeInfo), { status: 200 }));
+        const response = await utils.deleteNode(nodeInfo);
 
-      const response = await utils.getNodeInfo(nodeInfo._id);
+        expect(response).to.deep.equal(nodeInfo);
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5986/_nodes/couchdb@couchdb-1.local?rev=the-rev',
+          {
+            method: 'DELETE',
+            headers: jsonHeaders,
+          }
+        ]);
+      });
 
-      expect(response).to.deep.equal(nodeInfo);
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5986/_nodes/couchdb@couchdb-1.local',
-        { headers: jsonHeaders }
-      ]);
-    });
+      it('should throw error on invalid node info', async () => {
+        await expect(utils.deleteNode()).to.be.rejectedWith(Error, 'Missing or invalid node metadata');
+      });
 
-    it('should throw error if missing node name', async () => {
-      await expect(utils.getNodeInfo()).to.be.rejectedWith(Error, 'Missing node name');
-    });
+      it('should throw error on missing node name', async () => {
+        await expect(utils.deleteNode({ _rev: '1' })).to.be.rejectedWith(Error, 'Missing or invalid node metadata');
+      });
 
-    it('should throw error if getting info fails', async () => {
-      fetchStub.resolves(new Response(JSON.stringify({}), { status: 404 }));
-      await expect(utils.getNodeInfo('name')).to.be.rejectedWith(Error, 'Error while getting node info');
-    });
-  });
+      it('should throw error on missing node rev', async () => {
+        await expect(utils.deleteNode({ _id: '2' })).to.be.rejectedWith(Error, 'Missing or invalid node metadata');
+      });
 
-  describe('deleteNode', () => {
-    it('should delete node', async () => {
-      const nodeInfo = { _id: 'couchdb@couchdb-1.local', _rev: 'the-rev' };
-      fetchStub.resolves(new Response(JSON.stringify(nodeInfo), { status: 200 }));
+      it('should throw error when deletion fails', async () => {
+        const nodeInfo = { _id: 'couchdb@couchdb-1.local', _rev: 'the-rev' };
+        fetchStub.rejects(new Response(JSON.stringify(nodeInfo), { status: 404 }));
 
-      const response = await utils.deleteNode(nodeInfo);
-
-      expect(response).to.deep.equal(nodeInfo);
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5986/_nodes/couchdb@couchdb-1.local?rev=the-rev',
-        {
-          method: 'DELETE',
-          headers: jsonHeaders,
-        }
-      ]);
+        await expect(utils.deleteNode(nodeInfo)).to.be.rejectedWith(Error, 'Error while deleting node');
+      });
     });
 
-    it('should throw error on invalid node info', async () => {
-      await expect(utils.deleteNode()).to.be.rejectedWith(Error, 'Missing or invalid node metadata');
+    describe('syncShards', () => {
+      it('should sync shards for db', async () => {
+        fetchStub.resolves(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+        const response = await utils.syncShards('dbname');
+
+        expect(response).to.deep.equal({ ok: true });
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5984/dbname/_sync_shards',
+          {
+            headers: jsonHeaders,
+            method: 'POST',
+          },
+        ]);
+      });
+
+      it('should throw error when no db name is passed', async () => {
+        await expect(utils.syncShards()).to.be.rejectedWith(Error, 'Missing db name');
+      });
+
+      it('should throw error when request throws error', async () => {
+        fetchStub.rejects(new Response('whatever', { status: 500 }));
+        await expect(utils.syncShards('thedb')).to.be.rejectedWith(Error, 'Error while syncing shards for db: thedb');
+      });
     });
 
-    it('should throw error on missing node name', async () => {
-      await expect(utils.deleteNode({ _rev: '1' })).to.be.rejectedWith(Error, 'Missing or invalid node metadata');
+    describe('getShards', () => {
+      it('should return list of shards', async () => {
+        const allClusterDbs = [
+          '_dbs',
+          '_nodes',
+          '_replicator',
+          '_users',
+          'shards/00000000-1fffffff/medic.1637673820',
+          'shards/20000000-3fffffff/medic.1637673820',
+          'shards/40000000-5fffffff/medic.1637673820',
+          'shards/60000000-7fffffff/medic.1637673820',
+          'shards/80000000-9fffffff/medic.1637673820',
+          'shards/a0000000-bfffffff/medic.1637673820',
+          'shards/c0000000-dfffffff/medic.1637673820',
+          'shards/e0000000-ffffffff/medic.1637673820',
+          'shards/00000000-1fffffff/medic-sentinel.1637673820',
+          'shards/20000000-3fffffff/medic-sentinel.1637673820',
+          'shards/40000000-5fffffff/medic-sentinel.1637673820',
+          'shards/60000000-7fffffff/medic-sentinel.1637673820',
+          'shards/80000000-9fffffff/medic-sentinel.1637673820',
+          'shards/a0000000-bfffffff/medic-sentinel.1637673820',
+          'shards/c0000000-dfffffff/medic-sentinel.1637673820',
+          'shards/e0000000-ffffffff/medic-sentinel.1637673820',
+          'shards/00000000-1fffffff/medic-users-meta.1637673820',
+          'shards/20000000-3fffffff/medic-users-meta.1637673820',
+          'shards/40000000-5fffffff/medic-users-meta.1637673820',
+          'shards/60000000-7fffffff/medic-users-meta.1637673820',
+          'shards/80000000-9fffffff/medic-users-meta.1637673820',
+          'shards/a0000000-bfffffff/medic-users-meta.1637673820',
+          'shards/c0000000-dfffffff/medic-users-meta.1637673820',
+          'shards/e0000000-ffffffff/medic-users-meta.1637673820',
+        ];
+
+        fetchStub.resolves(new Response(JSON.stringify(allClusterDbs), { status: 200 }));
+
+        const shards = await utils.getShards();
+
+        expect(shards).to.deep.equal([
+          '00000000-1fffffff',
+          '20000000-3fffffff',
+          '40000000-5fffffff',
+          '60000000-7fffffff',
+          '80000000-9fffffff',
+          'a0000000-bfffffff',
+          'c0000000-dfffffff',
+          'e0000000-ffffffff',
+        ]);
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5986/_all_dbs',
+          { headers: jsonHeaders }
+        ]);
+      });
+
+      it('should throw error on fetch error', async () => {
+        fetchStub.rejects(new Response('whatever', { status: 500 }));
+        await expect(utils.getShards()).to.be.rejectedWith(Error, 'Error while getting list of shards');
+      });
     });
 
-    it('should throw error on missing node rev', async () => {
-      await expect(utils.deleteNode({ _id: '2' })).to.be.rejectedWith(Error, 'Missing or invalid node metadata');
+    describe('getNodes', () => {
+      it('should return all_nodes', async () => {
+        const membership = { all_nodes: ['1', '2'], cluster_nodes: ['1', '2', '3'] };
+        fetchStub.resolves(new Response(JSON.stringify(membership), { status: 200 }));
+
+        const result = await utils.getNodes();
+
+        expect(result).to.deep.equal(membership.all_nodes);
+
+        expect(fetchStub.callCount).to.equal(1);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5984/_membership',
+          { headers: jsonHeaders }
+        ]);
+      });
+
+      it('should throw request errors', async () => {
+        fetchStub.rejects({ an: 'error' });
+        await expect(utils.getNodes()).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
+      });
     });
 
-    it('should throw error when deletion fails', async () => {
-      const nodeInfo = { _id: 'couchdb@couchdb-1.local', _rev: 'the-rev' };
-      fetchStub.rejects(new Response(JSON.stringify(nodeInfo), { status: 404 }));
+    describe('getConfig', () => {
+      it('should return config value from first node', async () => {
+        const membership = { all_nodes: ['1', '2'], cluster_nodes: ['1', '2', '3'] };
+        fetchStub
+          .withArgs('http://admin:pass@couchdb-1.local:5984/_membership')
+          .resolves(new Response(JSON.stringify(membership), { status: 200 }));
+        fetchStub
+          .withArgs('http://admin:pass@couchdb-1.local:5984/_node/1/_config/mysection/mykey')
+          .resolves(new Response(JSON.stringify('myvalue'), { status: 200 }));
 
-      await expect(utils.deleteNode(nodeInfo)).to.be.rejectedWith(Error, 'Error while deleting node');
-    });
-  });
+        const result = await utils.getConfig('mysection', 'mykey');
+        expect(result).to.equal('myvalue');
+        expect(fetchStub.callCount).to.equal(2);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5984/_membership',
+          { headers: jsonHeaders }
+        ]);
+        expect(fetchStub.args[1]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5984/_node/1/_config/mysection/mykey',
+          { headers: jsonHeaders }
+        ]);
+      });
 
-  describe('syncShards', () => {
-    it('should sync shards for db', async () => {
-      fetchStub.resolves(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+      it('should return empty string when no config value exists', async () => {
+        const membership = { all_nodes: ['node1', '2'], cluster_nodes: ['1', '2', '3'] };
+        fetchStub
+          .withArgs('http://admin:pass@couchdb-1.local:5984/_membership')
+          .resolves(new Response(JSON.stringify(membership), { status: 200 }));
+        fetchStub
+          .withArgs('http://admin:pass@couchdb-1.local:5984/_node/node1/_config/sec/key')
+          .rejects(new Response('not found', { status: 404 }));
 
-      const response = await utils.syncShards('dbname');
+        const result = await utils.getConfig('sec', 'key');
+        expect(result).to.equal('');
+        expect(fetchStub.callCount).to.equal(2);
+        expect(fetchStub.args[0]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5984/_membership',
+          { headers: jsonHeaders }
+        ]);
+        expect(fetchStub.args[1]).to.deep.equal([
+          'http://admin:pass@couchdb-1.local:5984/_node/node1/_config/sec/key',
+          { headers: jsonHeaders }
+        ]);
+      });
 
-      expect(response).to.deep.equal({ ok: true });
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5984/dbname/_sync_shards',
-        {
-          headers: jsonHeaders,
-          method: 'POST',
-        },
-      ]);
-    });
+      it('should throw errors when request fails', async () => {
+        const membership = { all_nodes: ['node1', '2'], cluster_nodes: ['1', '2', '3'] };
+        fetchStub
+          .withArgs('http://admin:pass@couchdb-1.local:5984/_membership')
+          .resolves(new Response(JSON.stringify(membership), { status: 200 }));
+        fetchStub
+          .withArgs('http://admin:pass@couchdb-1.local:5984/_node/node1/_config/sec/key')
+          .rejects(new Response(JSON.stringify('boom'), { status: 500 }));
 
-    it('should throw error when no db name is passed', async () => {
-      await expect(utils.syncShards()).to.be.rejectedWith(Error, 'Missing db name');
-    });
-
-    it('should throw error when request throws error', async () => {
-      fetchStub.rejects(new Response('whatever', { status: 500 }));
-      await expect(utils.syncShards('thedb')).to.be.rejectedWith(Error, 'Error while syncing shards for db: thedb');
-    });
-  });
-
-  describe('getShards', () => {
-    it('should return list of shards', async () => {
-      const allClusterDbs = [
-        '_dbs',
-        '_nodes',
-        '_replicator',
-        '_users',
-        'shards/00000000-1fffffff/medic.1637673820',
-        'shards/20000000-3fffffff/medic.1637673820',
-        'shards/40000000-5fffffff/medic.1637673820',
-        'shards/60000000-7fffffff/medic.1637673820',
-        'shards/80000000-9fffffff/medic.1637673820',
-        'shards/a0000000-bfffffff/medic.1637673820',
-        'shards/c0000000-dfffffff/medic.1637673820',
-        'shards/e0000000-ffffffff/medic.1637673820',
-        'shards/00000000-1fffffff/medic-sentinel.1637673820',
-        'shards/20000000-3fffffff/medic-sentinel.1637673820',
-        'shards/40000000-5fffffff/medic-sentinel.1637673820',
-        'shards/60000000-7fffffff/medic-sentinel.1637673820',
-        'shards/80000000-9fffffff/medic-sentinel.1637673820',
-        'shards/a0000000-bfffffff/medic-sentinel.1637673820',
-        'shards/c0000000-dfffffff/medic-sentinel.1637673820',
-        'shards/e0000000-ffffffff/medic-sentinel.1637673820',
-        'shards/00000000-1fffffff/medic-users-meta.1637673820',
-        'shards/20000000-3fffffff/medic-users-meta.1637673820',
-        'shards/40000000-5fffffff/medic-users-meta.1637673820',
-        'shards/60000000-7fffffff/medic-users-meta.1637673820',
-        'shards/80000000-9fffffff/medic-users-meta.1637673820',
-        'shards/a0000000-bfffffff/medic-users-meta.1637673820',
-        'shards/c0000000-dfffffff/medic-users-meta.1637673820',
-        'shards/e0000000-ffffffff/medic-users-meta.1637673820',
-      ];
-
-      fetchStub.resolves(new Response(JSON.stringify(allClusterDbs), { status: 200 }));
-
-      const shards = await utils.getShards();
-
-      expect(shards).to.deep.equal([
-        '00000000-1fffffff',
-        '20000000-3fffffff',
-        '40000000-5fffffff',
-        '60000000-7fffffff',
-        '80000000-9fffffff',
-        'a0000000-bfffffff',
-        'c0000000-dfffffff',
-        'e0000000-ffffffff',
-      ]);
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5986/_all_dbs',
-        { headers: jsonHeaders }
-      ]);
-    });
-
-    it('should throw error on fetch error', async () => {
-      fetchStub.rejects(new Response('whatever', { status: 500 }));
-      await expect(utils.getShards()).to.be.rejectedWith(Error, 'Error while getting list of shards');
-    });
-  });
-
-  describe('getNodes', () => {
-    it('should return all_nodes', async () => {
-      const membership = { all_nodes: ['1', '2'], cluster_nodes: ['1', '2', '3'] };
-      fetchStub.resolves(new Response(JSON.stringify(membership), { status: 200 }));
-
-      const result = await utils.getNodes();
-
-      expect(result).to.deep.equal(membership.all_nodes);
-
-      expect(fetchStub.callCount).to.equal(1);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5984/_membership',
-        { headers: jsonHeaders }
-      ]);
-    });
-
-    it('should throw request errors', async () => {
-      fetchStub.rejects({ an: 'error' });
-      await expect(utils.getNodes()).to.be.rejected.and.eventually.deep.equal({ an: 'error' });
-    });
-  });
-
-  describe('getConfig', () => {
-    it('should return config value from first node', async () => {
-      const membership = { all_nodes: ['1', '2'], cluster_nodes: ['1', '2', '3'] };
-      fetchStub
-        .withArgs('http://admin:pass@couchdb-1.local:5984/_membership')
-        .resolves(new Response(JSON.stringify(membership), { status: 200 }));
-      fetchStub
-        .withArgs('http://admin:pass@couchdb-1.local:5984/_node/1/_config/mysection/mykey')
-        .resolves(new Response(JSON.stringify('myvalue'), { status: 200 }));
-
-      const result = await utils.getConfig('mysection', 'mykey');
-      expect(result).to.equal('myvalue');
-      expect(fetchStub.callCount).to.equal(2);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5984/_membership',
-        { headers: jsonHeaders }
-      ]);
-      expect(fetchStub.args[1]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5984/_node/1/_config/mysection/mykey',
-        { headers: jsonHeaders }
-      ]);
-    });
-
-    it('should return empty string when no config value exists', async () => {
-      const membership = { all_nodes: ['node1', '2'], cluster_nodes: ['1', '2', '3'] };
-      fetchStub
-        .withArgs('http://admin:pass@couchdb-1.local:5984/_membership')
-        .resolves(new Response(JSON.stringify(membership), { status: 200 }));
-      fetchStub
-        .withArgs('http://admin:pass@couchdb-1.local:5984/_node/node1/_config/sec/key')
-        .rejects(new Response('not found', { status: 404 }));
-
-      const result = await utils.getConfig('sec', 'key');
-      expect(result).to.equal('');
-      expect(fetchStub.callCount).to.equal(2);
-      expect(fetchStub.args[0]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5984/_membership',
-        { headers: jsonHeaders }
-      ]);
-      expect(fetchStub.args[1]).to.deep.equal([
-        'http://admin:pass@couchdb-1.local:5984/_node/node1/_config/sec/key',
-        { headers: jsonHeaders }
-      ]);
-    });
-
-    it('should throw errors when request fails', async () => {
-      const membership = { all_nodes: ['node1', '2'], cluster_nodes: ['1', '2', '3'] };
-      fetchStub
-        .withArgs('http://admin:pass@couchdb-1.local:5984/_membership')
-        .resolves(new Response(JSON.stringify(membership), { status: 200 }));
-      fetchStub
-        .withArgs('http://admin:pass@couchdb-1.local:5984/_node/node1/_config/sec/key')
-        .rejects(new Response(JSON.stringify('boom'), { status: 500 }));
-
-      await expect(utils.getConfig('sec', 'key')).to.be.rejectedWith(Error, 'Error when getting config');
+        await expect(utils.getConfig('sec', 'key')).to.be.rejectedWith(Error, 'Error when getting config');
+      });
     });
   });
 });

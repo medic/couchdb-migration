@@ -14,12 +14,13 @@ docker-compose up
 
 ##### get-env
 
-Requires `COUCH_URL` environment variable to be set.
+Requires `COUCH_URL` and `CHT_NETWORK` environment variable to be set.
 Run this while running 3.x CouchDb. Outputs list of environment variables that are required by 4.x CouchDb. 
 
 Usage:
 ```shell
-export COUCH_URL=http://admin:pass@127.0.0.1:5984
+export COUCH_URL=http://admin:pass@<couchdb-host>:5984
+export CHT_NETWORK=<network_name>
 docker-compose run couch-migration get-env
 ```
 
@@ -37,14 +38,15 @@ export $(docker-compose run couch-migration get-env | xargs)
 
 Used when running 4.x CouchDb in single node.
 
-Requires `COUCH_URL` environment variable to be set. 
-If your CouchDb Cluster port is different from the default (5984), export this port as `COUCH_CLUSTER_PORT`.
+Requires `COUCH_URL` and `CHT_NETWORK` environment variable to be set.
+If your CouchDb Cluster port is different from the default (5986), export this port as `COUCH_CLUSTER_PORT`.
 Run this after starting 4.x CouchDb. Updates every databases' metadata to assign shards to the correct node. 
 
 Usage
 ```shell
-export COUCH_URL=http://admin:pass@127.0.0.1:5984
+export COUCH_URL=http://admin:pass@couchdbhost:5984
 export COUCH_CLUSTER_PORT=5986
+export CHT_NETWORK=<network_name>
 docker-compose run couch-migration move-node
 ```
 
@@ -52,7 +54,7 @@ docker-compose run couch-migration move-node
 
 Used when running 4.x CouchDb in clustered mode, with multiple nodes.
 
-Requires `COUCH_URL` environment variable to be set.
+Requires `COUCH_URL` and `CHT_NETWORK` environment variable to be set.
 If your CouchDb Cluster port is different from the default (5984), export this port as `COUCH_CLUSTER_PORT`.
 Outputs a JSON object representing redistribution of existent shards among CouchDb nodes.
 The matrix should be followed when moving shard data files among nodes, and should be passed to the `mode-shards` command.
@@ -120,7 +122,7 @@ Move <mainNode-Path>/.shards/e0000000-ffffffff to <couchdb@couchdb-2.local-path>
 
 Used when running 4.x CouchDb in clustered mode, with multiple nodes.
 
-Requires `COUCH_URL` environment variable to be set.
+Requires `COUCH_URL` and `CHT_NETWORK` environment variable to be set.
 If your CouchDb Cluster port is different from the default (5984), export this port as `COUCH_CLUSTER_PORT`.
 Requires output from `generate-shard-distribution-matrix` to be passed as a parameter.
 Updates every databases' metadata to assign shards to the correct node, according to the distribution matrix. 
@@ -134,7 +136,7 @@ docker-compose run couch-migration move-shards $shard_matrix
 ### pre-index-views
 
 Used to pre-index target 4.x CouchDb views while still running 3.x CouchDb. This will reduce downtime when you launch 4.x.
-Requires `COUCH_URL` environment variable to be set. Requires that target 4.x version to be passed as the first parameter (for example: `4.0.1`). 
+Requires `COUCH_URL` and `CHT_NETWORK` environment variable to be set. Requires that target 4.x version to be passed as the first parameter (for example: `4.0.1`). 
 
 Usage
 ```shell

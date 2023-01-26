@@ -8,7 +8,7 @@ describe('get-env', () => {
   describe('getEnv', () => {
     it('should log correct env', async () => {
       sinon.stub(utils, 'getConfig');
-      sinon.stub(utils, 'couchUrl').get(() => ({ username: 'medic', password: 'pass' }));
+      sinon.stub(utils, 'getCouchUrl').resolves({ username: 'medic', password: 'pass' });
       utils.getConfig.withArgs('couch_httpd_auth', 'secret').resolves('thesecret');
       utils.getConfig.withArgs('couchdb', 'uuid').resolves('theuuid');
 

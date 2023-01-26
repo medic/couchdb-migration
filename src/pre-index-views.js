@@ -48,7 +48,7 @@ const getDDocs = async (version) => {
 
 const dbExists = async (dbName) => {
   try {
-    const url = utils.getUrl(dbName);
+    const url = await utils.getUrl(dbName);
     await utils.request({ url });
     return true;
   } catch (err) {
@@ -79,7 +79,7 @@ const getStagedDdocs = async (ddocsForDb) => {
 
 const saveStagedDdocs = async (stagedDdocs) => {
   for (const [dbName, ddocs] of Object.entries(stagedDdocs)) {
-    const url = utils.getUrl(`${dbName}/_bulk_docs`);
+    const url = await utils.getUrl(`${dbName}/_bulk_docs`);
     await utils.request({ url, body: { docs: ddocs }, method: 'POST' });
   }
 };
@@ -87,7 +87,7 @@ const saveStagedDdocs = async (stagedDdocs) => {
 const indexView = async (dbName, ddocId, viewName) => {
   do {
     try {
-      const url = utils.getUrl(`/${dbName}/${ddocId}/_view/${viewName}`, false, `limit=0`);
+      const url = await utils.getUrl(`/${dbName}/${ddocId}/_view/${viewName}`, false, `limit=0`);
       return await utils.request({ url });
     } catch (err) {
       const timeoutError = err && err.response && TIMEOUT_ERROR.includes(err.response.error);
