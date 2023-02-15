@@ -1,5 +1,6 @@
 const rewire = require('rewire');
 const { Response } = require('node-fetch');
+const { setupUtils } = require('./mocha-hooks');
 
 let utils;
 let fetchStub;
@@ -31,6 +32,15 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl();
 
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
+
+      await utils.prepareCouchUrl(true);
       expect(fetchStub.callCount).to.equal(4);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:6984/', {}],
@@ -49,6 +59,16 @@ describe('utils', () => {
       fetchStub.withArgs('http://admin:pass@couchdb-1.local:5986/').resolves(new Response('""', { status: 200 }));
 
       await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
+
+      await utils.prepareCouchUrl(true);
 
       expect(fetchStub.callCount).to.equal(4);
       expect(fetchStub.args).to.deep.equal([
@@ -69,6 +89,16 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl();
 
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
+
+      await utils.prepareCouchUrl(true);
+
       expect(fetchStub.callCount).to.equal(4);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:6984/', {}],
@@ -87,6 +117,16 @@ describe('utils', () => {
       fetchStub.withArgs('http://admin:pass@couchdb-1.local:5986/').resolves(new Response('""', { status: 200 }));
 
       await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
+
+      await utils.prepareCouchUrl(true);
 
       expect(fetchStub.callCount).to.equal(4);
       expect(fetchStub.args).to.deep.equal([
@@ -123,14 +163,27 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl();
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(2);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
-      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
 
       await utils.prepareCouchUrl();
       await utils.prepareCouchUrl();
       await utils.prepareCouchUrl();
       await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(2);
+
+      await utils.prepareCouchUrl(true);
+
+      expect(fetchStub.callCount).to.equal(4);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
+
+      await utils.prepareCouchUrl(true);
+      await utils.prepareCouchUrl(true);
+      await utils.prepareCouchUrl(true);
+      await utils.prepareCouchUrl(true);
 
       expect(fetchStub.callCount).to.equal(4);
     });
@@ -251,9 +304,7 @@ describe('utils', () => {
 
   describe('db query methods', () => {
     beforeEach(async () => {
-      fetchStub.callsFake(() => new Response('', { status: 200 }));
-      await utils.prepareCouchUrl();
-      sinon.resetHistory();
+      await setupUtils(utils);
     });
 
     describe('getDbs', () => {

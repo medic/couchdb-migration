@@ -2,6 +2,7 @@ const fetch = require('node-fetch');
 const { COUCH_URL, COUCH_CLUSTER_PORT } = process.env;
 const DEFAULT_COUCH_PORT = 5984;
 const DEFAULT_COUCH_CLUSTER_PORT = 5986;
+process.env.NODE_TLS_REJECT_UNAUTHORIZED=0;
 
 let couchUrl;
 let couchClusterUrl;
@@ -11,8 +12,8 @@ const testUrl = async (url) => {
   return url;
 };
 
-const prepareCouchUrl = async () => {
-  if (couchUrl && couchClusterUrl) {
+const prepareCouchUrl = async (cluster) => {
+  if ((couchUrl && !cluster) || (couchClusterUrl && cluster)) {
     return;
   }
 
@@ -20,19 +21,22 @@ const prepareCouchUrl = async () => {
     throw new Error('Env variable COUCH_URL must be set');
   }
 
-  try {
-    const customUrl = new URL(COUCH_URL);
-    const defaultUrl = new URL(COUCH_URL);
-    defaultUrl.port = DEFAULT_COUCH_PORT;
+  if (!cluster) {
+    try {
+      const customUrl = new URL(COUCH_URL);
+      const defaultUrl = new URL(COUCH_URL);
+      defaultUrl.port = DEFAULT_COUCH_PORT;
 
-    couchUrl = await Promise.any([
-      testUrl(customUrl),
-      testUrl(defaultUrl),
-    ]);
-  } catch (err) {
-    throw new Error(
-      'Failed to connect to CouchDb. Please verify that the COUCH_URL provided is reachable through docker network.'
-    );
+      couchUrl = await Promise.any([
+        testUrl(customUrl),
+        testUrl(defaultUrl),
+      ]);
+    } catch (err) {
+      throw new Error(
+        'Failed to connect to CouchDb. Please verify that the COUCH_URL provided is reachable through docker network.'
+      );
+    }
+    return;
   }
 
   try {
@@ -54,7 +58,7 @@ const prepareCouchUrl = async () => {
 };
 
 const getUrl = async (path, cluster, query) => {
-  await prepareCouchUrl();
+  await prepareCouchUrl(cluster);
   const url = new URL(cluster ? couchClusterUrl : couchUrl);
   url.pathname = path;
   query && (url.search = query);
@@ -69,7 +73,7 @@ class HTTPResponseError extends Error {
   }
 }
 
-const getResponseData = async (response, json) => json ? await response.json() : await response.text();
+const getResponseData = (response, json) => json ? response.json() : response.text();
 
 const request = async ({ url, json = true, ...moreOpts }) => {
   const opts = { ...moreOpts };

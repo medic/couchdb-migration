@@ -14,6 +14,7 @@ module.exports = {
   setupUtils: async (utils) => {
     sinon.stub(utils, 'request').resolves();
     await utils.prepareCouchUrl();
+    await utils.prepareCouchUrl(true);
     sinon.restore();
   }
 };
