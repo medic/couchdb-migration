@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   couch-migration:
-    image: public.ecr.aws/medic/couchdb-migration:1.0.0
+    image: public.ecr.aws/medic/couchdb-migration:1.0.2
     networks:
       - cht-net
     environment:
