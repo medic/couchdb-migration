@@ -86,7 +86,7 @@ const logIndexersProgress = (indexers) => {
 };
 
 const getActiveTasks = async () => {
-  const url = utils.getUrl('/_active_tasks');
+  const url = await utils.getUrl('/_active_tasks');
   return await utils.request({ url });
 };
 

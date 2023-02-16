@@ -5,7 +5,7 @@ const verifyViews = async (dbName, numDocs) => {
     return true;
   }
 
-  const url = utils.getUrl(`${dbName}/_design_docs`, false, 'include_docs=true');
+  const url = await utils.getUrl(`${dbName}/_design_docs`, false, 'include_docs=true');
   const response = await utils.request({ url });
 
   const ddocsWithViews = response.rows.filter(row => row.doc && row.doc.views && Object.keys(row.doc.views).length);
@@ -14,7 +14,7 @@ const verifyViews = async (dbName, numDocs) => {
   }
   for (const { doc: ddoc } of ddocsWithViews) {
     for (const view of Object.keys(ddoc.views)) {
-      const url = utils.getUrl(`${dbName}/${ddoc._id}/_view/${view}`, false, 'stale=ok&limit=0');
+      const url = await utils.getUrl(`${dbName}/${ddoc._id}/_view/${view}`, false, 'stale=ok&limit=0');
       const viewResponse = await utils.request({ url });
 
       if (viewResponse.total_rows > 0) {
@@ -32,7 +32,7 @@ const verifyDb = async (dbName) => {
   console.info(`Verifying ${dbName}`);
   await utils.syncShards(dbName);
 
-  const url = utils.getUrl(`${dbName}/_all_docs`, false, 'limit=0');
+  const url = await utils.getUrl(`${dbName}/_all_docs`, false, 'limit=0');
   const allDocsResponse = await utils.request({ url });
 
   const viewsIndexed = await verifyViews(dbName, allDocsResponse.total_rows);

@@ -7,6 +7,7 @@ services:
       - cht-net
     environment:
       - COUCH_URL
+      - COUCH_CLUSTER_PORT
 
 networks:
   cht-net:

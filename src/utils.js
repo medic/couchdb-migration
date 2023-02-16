@@ -1,16 +1,64 @@
 const fetch = require('node-fetch');
-const { COUCH_URL } = process.env;
+const { COUCH_URL, COUCH_CLUSTER_PORT } = process.env;
+const DEFAULT_COUCH_PORT = 5984;
+const DEFAULT_COUCH_CLUSTER_PORT = 5986;
+process.env.NODE_TLS_REJECT_UNAUTHORIZED=0;
 
-if (!COUCH_URL) {
-  throw new Error('Env variable COUCH_URL must be set');
-}
+let couchUrl;
+let couchClusterUrl;
 
-const couchUrl = new URL(COUCH_URL);
-couchUrl.port = 5984;
-const couchClusterUrl = new URL(couchUrl);
-couchClusterUrl.port = 5986;
+const testUrl = async (url) => {
+  await module.exports.request({ url: url.toString(), json: false });
+  return url;
+};
 
-const getUrl = (path, cluster, query) => {
+const prepareCouchUrl = async (cluster) => {
+  if ((couchUrl && !cluster) || (couchClusterUrl && cluster)) {
+    return;
+  }
+
+  if (!COUCH_URL) {
+    throw new Error('Env variable COUCH_URL must be set');
+  }
+
+  if (!cluster) {
+    try {
+      const customUrl = new URL(COUCH_URL);
+      const defaultUrl = new URL(COUCH_URL);
+      defaultUrl.port = DEFAULT_COUCH_PORT;
+
+      couchUrl = await Promise.any([
+        testUrl(customUrl),
+        testUrl(defaultUrl),
+      ]);
+    } catch (err) {
+      throw new Error(
+        'Failed to connect to CouchDb. Please verify that the COUCH_URL provided is reachable through docker network.'
+      );
+    }
+    return;
+  }
+
+  try {
+    const customUrl = new URL(COUCH_URL);
+    customUrl.port = parseInt(COUCH_CLUSTER_PORT) || DEFAULT_COUCH_CLUSTER_PORT;
+    const defaultUrl = new URL(COUCH_URL);
+    defaultUrl.port = DEFAULT_COUCH_CLUSTER_PORT;
+
+    couchClusterUrl = await Promise.any([
+      testUrl(customUrl),
+      testUrl(defaultUrl),
+    ]);
+  } catch (err) {
+    throw new Error(
+      'Failed to connect to CouchDb Clustering API. ' +
+      'Please verify that the COUCH_URL provided is reachable through docker network.'
+    );
+  }
+};
+
+const getUrl = async (path, cluster, query) => {
+  await prepareCouchUrl(cluster);
   const url = new URL(cluster ? couchClusterUrl : couchUrl);
   url.pathname = path;
   query && (url.search = query);
@@ -25,7 +73,7 @@ class HTTPResponseError extends Error {
   }
 }
 
-const getResponseData = async (response, json) => json ? await response.json() : await response.text();
+const getResponseData = (response, json) => json ? response.json() : response.text();
 
 const request = async ({ url, json = true, ...moreOpts }) => {
   const opts = { ...moreOpts };
@@ -55,7 +103,7 @@ const request = async ({ url, json = true, ...moreOpts }) => {
 };
 
 const getDbs = async () => {
-  const url = getUrl('_all_dbs');
+  const url = await getUrl('_all_dbs');
   try {
     return await request({ url });
   } catch (err) {
@@ -65,7 +113,7 @@ const getDbs = async () => {
 };
 
 const getMembership = async () => {
-  const url = getUrl('_membership');
+  const url = await getUrl('_membership');
   try {
     return await request({ url });
   } catch (err) {
@@ -78,7 +126,7 @@ const getDbMetadata = async (dbName) => {
   if (!dbName) {
     throw new Error('Missing database name');
   }
-  const url = getUrl(`_dbs/${dbName}`, true);
+  const url = await getUrl(`_dbs/${dbName}`, true);
   try {
     return await request({ url });
   } catch (err) {
@@ -95,7 +143,7 @@ const updateDbMetadata = async (dbName, metadata) => {
     throw new Error('Missing or invalid database metadata');
   }
 
-  const url = getUrl(`_dbs/${dbName}`, true);
+  const url = await getUrl(`_dbs/${dbName}`, true);
   try {
     return await request({ url, method: 'PUT', body: metadata });
   } catch (err) {
@@ -109,7 +157,7 @@ const getNodeInfo = async (nodeName) => {
     throw new Error('Missing node name');
   }
 
-  const url = getUrl(`_nodes/${nodeName}`, true);
+  const url = await getUrl(`_nodes/${nodeName}`, true);
   try {
     return await request({ url });
   } catch (err) {
@@ -123,7 +171,7 @@ const deleteNode = async (nodeInfo) => {
     throw new Error('Missing or invalid node metadata');
   }
 
-  const url = getUrl(`_nodes/${nodeInfo._id}`, true, `rev=${nodeInfo._rev}`);
+  const url = await getUrl(`_nodes/${nodeInfo._id}`, true, `rev=${nodeInfo._rev}`);
   try {
     return await request({ url, method: 'DELETE' });
   } catch (err) {
@@ -136,7 +184,7 @@ const syncShards = async (db) => {
   if (!db) {
     throw new Error('Missing db name');
   }
-  const url = getUrl(`${db}/_sync_shards`);
+  const url = await getUrl(`${db}/_sync_shards`);
   try {
     return await request({ url, method: 'POST' });
   } catch (err) {
@@ -147,7 +195,7 @@ const syncShards = async (db) => {
 };
 
 const getShards = async () => {
-  const url = getUrl('_all_dbs', true);
+  const url = await getUrl('_all_dbs', true);
   try {
     const clusterDbs = await request({ url });
     const re = /^shards\/([^/]+)\//;
@@ -171,7 +219,7 @@ const getConfig = async (section, key) => {
   try {
     const nodes = await getNodes();
     const node = nodes[0];
-    const url = getUrl(`_node/${node}/_config/${section}/${key}`);
+    const url = await getUrl(`_node/${node}/_config/${section}/${key}`);
     return await request({ url });
   } catch (err) {
     if (err.status === 404) {
@@ -180,6 +228,11 @@ const getConfig = async (section, key) => {
     console.error('Error when getting config', err);
     throw new Error('Error when getting config');
   }
+};
+
+const getCouchUrl = async () => {
+  await prepareCouchUrl();
+  return couchUrl;
 };
 
 module.exports = {
@@ -195,5 +248,6 @@ module.exports = {
   getShards,
   getNodes,
   getConfig,
-  couchUrl,
+  getCouchUrl,
+  prepareCouchUrl,
 };

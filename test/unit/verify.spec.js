@@ -1,9 +1,14 @@
 const utils = require('../../src/utils');
 const verify = require('../../src/verify');
+const { setupUtils } = require('./mocha-hooks');
 
-const couchUrl = utils.couchUrl.toString();
+let couchUrl;
 
 describe('verify', () => {
+  before(async () => {
+    await setupUtils(utils);
+    couchUrl = (await utils.getCouchUrl()).toString();
+  });
 
   it('should check every database', async () => {
     sinon.stub(utils, 'getDbs').resolves(['one', 'two']);
