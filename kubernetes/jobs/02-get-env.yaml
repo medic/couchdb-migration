@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: get-env
+spec:
+  template:
+    spec:
+      containers:
+      - name: get-env
+        image: public.ecr.aws/medic/couchdb-migration:1.0.2
+        command: ["/bin/sh", "-c"]
+        args: ["get-env"]
+        env:
+        - name: INTENDED_CHT_VERSION
+          valueFrom:
+            secretKeyRef:
+              name: cht-secrets
+              key: INTENDED_CHT_VERSION
+        - name: COUCH_URL
+          valueFrom:
+            secretKeyRef:
+              name: cht-secrets
+              key: COUCH_URL
+        envFrom:
+        - configMapRef:
+            name: env-config
+        - secretRef:
+            name: env-secrets
+      restartPolicy: Never
