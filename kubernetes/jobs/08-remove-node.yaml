@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: remove-node
+spec:
+  template:
+    spec:
+      containers:
+      - name: remove-node
+        image: public.ecr.aws/medic/couchdb-migration:1.0.2
+        command: ["/bin/sh", "-c"]
+        args: ["remove-node $NODE_ADDRESS"]
+        env:
+        - name: NODE_ADDRESS
+          value: "couchdb@127.0.0.1"
+        - name: COUCH_URL
+          valueFrom:
+            secretKeyRef:
+              name: cht-secrets
+              key: COUCH_URL
+        envFrom:
+        - configMapRef:
+            name: env-config
+        - secretRef:
+            name: env-secrets
+      restartPolicy: Never

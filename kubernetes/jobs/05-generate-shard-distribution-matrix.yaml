@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-shard-distribution-matrix
+spec:
+  template:
+    spec:
+      containers:
+      - name: generate-shard-distribution-matrix
+        image: public.ecr.aws/medic/couchdb-migration:1.0.2
+        command: ["/bin/sh", "-c"]
+        args: ["generate-shard-distribution-matrix > /data/shard-matrix"]
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        env:
+        - name: COUCH_URL
+          valueFrom:
+            secretKeyRef:
+              name: cht-secrets
+              key: COUCH_URL
+        envFrom:
+        - configMapRef:
+            name: env-config
+        - secretRef:
+            name: env-secrets
+      restartPolicy: Never
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: shard-matrix-pvc

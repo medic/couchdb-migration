@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: verify
+spec:
+  template:
+    spec:
+      containers:
+      - name: verify
+        image: public.ecr.aws/medic/couchdb-migration:1.0.2
+        command: ["/bin/sh", "-c"]
+        args: ["verify"]
+        env:
+        - name: COUCH_URL
+          valueFrom:
+            secretKeyRef:
+              name: cht-secrets
+              key: COUCH_URL
+        envFrom:
+        - configMapRef:
+            name: env-config
+        - secretRef:
+            name: env-secrets
+      restartPolicy: Never
