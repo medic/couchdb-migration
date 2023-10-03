@@ -41,12 +41,13 @@ describe('utils', () => {
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
 
       await utils.prepareCouchUrl(true);
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(5);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:6984/', {}],
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:6986/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local/_nodes', {}],
       ]);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6986/'));
@@ -70,12 +71,13 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(5);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:6984/', {}],
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:6986/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local/_nodes', {}],
       ]);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
@@ -99,12 +101,13 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(5);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:6984/', {}],
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:6986/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local/_nodes', {}],
       ]);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
@@ -128,12 +131,13 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(5);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local/_nodes', {}],
       ]);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
@@ -176,7 +180,7 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(5);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
 
@@ -185,7 +189,7 @@ describe('utils', () => {
       await utils.prepareCouchUrl(true);
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(5);
     });
   });
 

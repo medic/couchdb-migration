@@ -4,7 +4,7 @@ services:
   couchdb-1.local:
     image: apache/couchdb:2.3.1
     volumes:
-      - ${DB1_DATA}:/opt/couchdb/data
+      - ${DB1_DATA:-./srv}:/opt/couchdb/data
     environment:
       - "COUCHDB_USER=${COUCHDB_USER:-admin}"
       - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}"
