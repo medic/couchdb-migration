@@ -8,6 +8,7 @@ let couchUrl;
 let couchClusterUrl;
 
 const testUrl = async (url) => {
+  console.log(url.toString());
   await module.exports.request({ url: url.toString(), json: false });
   return url;
 };
@@ -71,7 +72,7 @@ const prepareCouchUrl = async (cluster) => {
 const getUrl = async (path, cluster, query) => {
   await prepareCouchUrl(cluster);
   const url = new URL(cluster ? couchClusterUrl : couchUrl);
-  url.pathname = url.pathname + path;
+  url.pathname = (url.pathname + path).replace('//', '/');
   query && (url.search = query);
   return url.toString();
 };
