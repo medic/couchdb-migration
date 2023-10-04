@@ -9,7 +9,8 @@
     "test": "npm run eslint && npm run coverage",
     "e2e-single-node": "./test/e2e/single-node.sh",
     "e2e-single-node-couch3": "./test/e2e/single-node-3.sh",
-    "e2e-multi-node": "sudo ./test/e2e/multi-node.sh"
+    "e2e-multi-node": "sudo ./test/e2e/multi-node.sh",
+    "e2e-multi-node-couch3": "sudo ./test/e2e/multi-node-3.sh"
   },
   "bin": {
     "generate-shard-distribution-matrix": "bin/generate-shard-distribution-matrix.js",
