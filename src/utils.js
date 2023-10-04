@@ -8,7 +8,6 @@ let couchUrl;
 let couchClusterUrl;
 
 const testUrl = async (url) => {
-  console.log(url.toString());
   await module.exports.request({ url: url.toString(), json: false });
   return url;
 };
