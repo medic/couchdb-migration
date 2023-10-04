@@ -18,7 +18,7 @@ const testCouchDb3Url = async () => {
   url.port = DEFAULT_COUCH_PORT;
   await module.exports.request({ url: url.toString(), json: false });
 
-  url.pathname = '/_node/_local';
+  url.pathname = '/_node/_local/';
   return url;
 };
 
@@ -55,7 +55,6 @@ const prepareCouchUrl = async (cluster) => {
     const defaultUrl = new URL(COUCH_URL);
     defaultUrl.port = DEFAULT_COUCH_CLUSTER_PORT;
 
-
     couchClusterUrl = await Promise.any([
       testUrl(customUrl),
       testUrl(defaultUrl),
@@ -72,7 +71,7 @@ const prepareCouchUrl = async (cluster) => {
 const getUrl = async (path, cluster, query) => {
   await prepareCouchUrl(cluster);
   const url = new URL(cluster ? couchClusterUrl : couchUrl);
-  url.pathname = path;
+  url.pathname = url.pathname + path;
   query && (url.search = query);
   return url.toString();
 };

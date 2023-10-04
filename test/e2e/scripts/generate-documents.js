@@ -35,8 +35,6 @@ const generateDatabase = async (name, docs = []) => {
 };
 
 (async () => {
-  await rpn.put({ url: `${url}/_users`, json: true });
-
   const report = {
     _id: 'report',
     type: 'data_record',

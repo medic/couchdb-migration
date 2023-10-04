@@ -7,10 +7,14 @@ user=admin
 password=pass
 
 couchdir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
+couchconfigdir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 jsondataddir=$(mktemp -d -t json-XXXXXXXXXX)
+
+cp ./scripts/couch-config/10-docker.ini $couchconfigdir
 
 export CHT_NETWORK=couch-migration-network
 export DB1_DATA=$couchdir
+export COUCH_CONFIG=$couchconfigdir
 export COUCHDB_USER=$user
 export COUCHDB_PASSWORD=$password
 export COUCH_PORT=25984
