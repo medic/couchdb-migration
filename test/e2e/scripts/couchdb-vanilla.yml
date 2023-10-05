@@ -5,7 +5,7 @@ services:
     image: apache/couchdb:2.3.1
     volumes:
       - ${DB1_DATA:-./srv}:/opt/couchdb/data
-      - ${COUCH_CONFIG:-./couch-config}:/opt/couchdb/etc/local.d/
+      - ./couch-config/10-docker.ini:/opt/couchdb/etc/local.d/10-docker.ini
       - ./couch-config/vm.args:/opt/couchdb/etc/vm.args
     environment:
       - "COUCHDB_USER=${COUCHDB_USER:-admin}"

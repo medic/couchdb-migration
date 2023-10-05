@@ -12,13 +12,12 @@ const testUrl = async (url) => {
   return url;
 };
 
-const testCouchDb3Url = async () => {
+const testCouchDb3Url = async (port) => {
   const url = new URL(COUCH_URL);
-  url.pathname = '/_node/_local/_nodes';
-  url.port = DEFAULT_COUCH_PORT;
+  url.pathname = '/_node/_local';
+  port && (url.port = port);
   await module.exports.request({ url: url.toString(), json: false });
 
-  url.pathname = '/_node/_local/';
   return url;
 };
 
@@ -59,6 +58,7 @@ const prepareCouchUrl = async (cluster) => {
       testUrl(customUrl),
       testUrl(defaultUrl),
       testCouchDb3Url(),
+      testCouchDb3Url(DEFAULT_COUCH_PORT),
     ]);
   } catch (err) {
     throw new Error(
@@ -71,7 +71,7 @@ const prepareCouchUrl = async (cluster) => {
 const getUrl = async (path, cluster, query) => {
   await prepareCouchUrl(cluster);
   const url = new URL(cluster ? couchClusterUrl : couchUrl);
-  url.pathname = (url.pathname + path).replace('//', '/');
+  url.pathname = `${url.pathname}/${path}`.replace(/\/+/g, '/');
   query && (url.search = query);
   return url.toString();
 };
@@ -199,8 +199,7 @@ const syncShards = async (db) => {
   try {
     return await request({ url, method: 'POST' });
   } catch (err) {
-    console.error(`
-    Error while syncing shards for db: ${db}`, err);
+    console.error(`Error while syncing shards for db: ${db}`, err);
     throw new Error(`Error while syncing shards for db: ${db}`);
   }
 

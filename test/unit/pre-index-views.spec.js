@@ -16,7 +16,7 @@ describe('pre-index-views', () => {
   beforeEach(() => {
     viewIndexerProgressStop = sinon.stub();
     sinon.stub(utils, 'request').rejects();
-    utils.request.withArgs({ url: `${COUCH_URL}/`, json: false }).resolves();
+    utils.request.withArgs({ url: `${COUCH_URL}`, json: false }).resolves();
     sinon.stub(viewIndexerProgress, 'log').returns(viewIndexerProgressStop);
   });
 

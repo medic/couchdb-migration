@@ -12,9 +12,6 @@ couch3dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 mkdir -p $couch2dir/shards $couch2dir/.shards $couch3dir/shards $couch3dir/.shards
 jsondataddir=$(mktemp -d -t json-XXXXXXXXXX)
 
-couchconfigdir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
-cp ./scripts/couch-config/10-docker.ini $couchconfigdir
-
 export DB1_DATA=$couch1dir
 export DB2_DATA=$couch2dir
 export DB3_DATA=$couch3dir
