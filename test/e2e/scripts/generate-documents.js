@@ -34,7 +34,16 @@ const generateDatabase = async (name, docs = []) => {
   await rpn.get({ url: `${url}/${dbName}/_design/test/_view/view?update_seq=true`, json: true });
 };
 
+const createUsers = async () => {
+  await rpn.put({ url: `${url}/_users`, json: true });
+
+  const user = { _id: 'org.couchdb.user:test', password: 'omg', roles: ['omg'], name: 'test', type: 'user' };
+  await rpn.post({ url: `${url}/_users`, json: true, body: user });
+};
+
 (async () => {
+  await createUsers();
+
   const report = {
     _id: 'report',
     type: 'data_record',
