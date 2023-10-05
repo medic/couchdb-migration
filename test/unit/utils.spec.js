@@ -293,8 +293,14 @@ describe('utils', () => {
       expect(url).to.equal('http://medic:pwd@couch-2.local:5986/a_path');
     });
 
-    it('should keep pathname if exists', () => {
+    it('should keep pathname if exists', async () => {
+      stubProcess({ server: 'couch-2.local', user: 'medic', pass: 'pwd' });
+      fetchStub.rejects(new Response('', { status: 503 }));
+      fetchStub.withArgs('http://medic:pwd@couch-2.local:5984/').resolves(new Response('{"couchdb":"Welcome","version":"3.3.2"}', { status: 200 }));
+      fetchStub.withArgs('http://medic:pwd@couch-2.local:5984/_node/_local').resolves(new Response('{"name":"couchdb@127.0.0.1"}', { status: 200 }));
 
+      const url = await utils.getUrl('a_path', true);
+      expect(url).to.equal('http://medic:pwd@couch-2.local:5984/_node/_local/a_path');
     });
   });
 
