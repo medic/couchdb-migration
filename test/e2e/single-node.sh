@@ -27,7 +27,7 @@ docker network create $CHT_NETWORK || true
 docker-compose -f ../docker-compose-test.yml up --build
 
 # launch vanilla couch, populate with some data
-docker-compose -f ./scripts/couchdb-vanilla.yml up --wait
+docker-compose -f ./scripts/couchdb-vanilla.yml up -d
 docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
 node ./scripts/generate-documents $jsondataddir
 # pre-index 4.0.1 views
@@ -38,7 +38,7 @@ export $(docker-compose -f ../docker-compose-test.yml run couch-migration get-en
 docker-compose -f ./scripts/couchdb-vanilla.yml down --remove-orphans --volumes
 
 # launch cht 4.x CouchDb single node
-docker-compose -f ./scripts/couchdb-single.yml up --wait
+docker-compose -f ./scripts/couchdb-single.yml up -d
 docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
 # change database metadata to match new node name
 docker-compose -f ../docker-compose-test.yml run couch-migration move-node
