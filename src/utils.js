@@ -12,6 +12,15 @@ const testUrl = async (url) => {
   return url;
 };
 
+const testCouchDb3Url = async (port) => {
+  const url = new URL(COUCH_URL);
+  url.pathname = '/_node/_local';
+  port && (url.port = port);
+  await module.exports.request({ url: url.toString(), json: false });
+
+  return url;
+};
+
 const prepareCouchUrl = async (cluster) => {
   if ((couchUrl && !cluster) || (couchClusterUrl && cluster)) {
     return;
@@ -48,6 +57,8 @@ const prepareCouchUrl = async (cluster) => {
     couchClusterUrl = await Promise.any([
       testUrl(customUrl),
       testUrl(defaultUrl),
+      testCouchDb3Url(),
+      testCouchDb3Url(DEFAULT_COUCH_PORT),
     ]);
   } catch (err) {
     throw new Error(
@@ -60,7 +71,7 @@ const prepareCouchUrl = async (cluster) => {
 const getUrl = async (path, cluster, query) => {
   await prepareCouchUrl(cluster);
   const url = new URL(cluster ? couchClusterUrl : couchUrl);
-  url.pathname = path;
+  url.pathname = `${url.pathname}/${path}`.replace(/\/+/g, '/');
   query && (url.search = query);
   return url.toString();
 };

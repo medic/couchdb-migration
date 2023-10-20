@@ -81,6 +81,9 @@ const checkSharding = async (db) => {
   const shardErrors = [];
 
   const dbs = await getDbs();
+  if (!dbs.includes('_users')) {
+    throw new Error('missing users db');
+  }
 
   for (const db of dbs) {
     if (db === '_users') {

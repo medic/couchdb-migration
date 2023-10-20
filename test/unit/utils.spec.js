@@ -41,18 +41,82 @@ describe('utils', () => {
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
 
       await utils.prepareCouchUrl(true);
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(6);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:6984/', {}],
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:6986/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:6984/_node/_local', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local', {}],
       ]);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6986/'));
     });
 
-    it('should ssign couch urls with mixed ports', async () => {
+    it('should assign couch urls with custom ports for couchdb 3', async () => {
+      stubProcess({ port: 6984, cport: 6986 });
+      fetchStub.rejects(new Response('', { status: 503 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:6984/').resolves(new Response('{"couchdb":"Welcome","version":"3.3.2"}', { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:6984/_node/_local').resolves(new Response('{"name":"couchdb@127.0.0.1"}', { status: 200 }));
+
+
+      await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
+
+      await utils.prepareCouchUrl(true);
+      expect(fetchStub.callCount).to.equal(6);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:6984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:6986/', {}],
+        ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:6984/_node/_local', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/_node/_local'));
+    });
+
+    it('should assign couch urls with default ports for couchdb 3', async () => {
+      stubProcess({ port: 5984 });
+      fetchStub.rejects(new Response('', { status: 503 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/').resolves(new Response('{"couchdb":"Welcome","version":"3.3.2"}', { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_node/_local').resolves(new Response('{"name":"couchdb@127.0.0.1"}', { status: 200 }));
+
+
+      await utils.prepareCouchUrl();
+
+      expect(fetchStub.callCount).to.equal(2);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(undefined);
+
+      await utils.prepareCouchUrl(true);
+      expect(fetchStub.callCount).to.equal(6);
+      expect(fetchStub.args).to.deep.equal([
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/', {}],
+        ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local', {}],
+      ]);
+      expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
+      expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/_node/_local'));
+    });
+
+    it('should assign couch urls with mixed ports', async () => {
       stubProcess({ port: 6984, cport: 6986 });
       fetchStub.rejects(new Response('', { status: 503 }));
       fetchStub.withArgs('http://admin:pass@couchdb-1.local:6984/').resolves(new Response('""', { status: 200 }));
@@ -70,12 +134,14 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(6);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:6984/', {}],
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:6986/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:6984/_node/_local', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local', {}],
       ]);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:6984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
@@ -99,12 +165,14 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(6);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:6984/', {}],
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:6986/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:6984/_node/_local', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local', {}],
       ]);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
@@ -128,12 +196,14 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(6);
       expect(fetchStub.args).to.deep.equal([
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:5984/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
         ['http://admin:pass@couchdb-1.local:5986/', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local', {}],
+        ['http://admin:pass@couchdb-1.local:5984/_node/_local', {}],
       ]);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
@@ -176,7 +246,7 @@ describe('utils', () => {
 
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(6);
       expect(utils.__get__('couchUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5984/'));
       expect(utils.__get__('couchClusterUrl')).to.deep.equal(new URL('http://admin:pass@couchdb-1.local:5986/'));
 
@@ -185,7 +255,7 @@ describe('utils', () => {
       await utils.prepareCouchUrl(true);
       await utils.prepareCouchUrl(true);
 
-      expect(fetchStub.callCount).to.equal(4);
+      expect(fetchStub.callCount).to.equal(6);
     });
   });
 
@@ -221,6 +291,16 @@ describe('utils', () => {
 
       const url = await utils.getUrl('a_path', true);
       expect(url).to.equal('http://medic:pwd@couch-2.local:5986/a_path');
+    });
+
+    it('should keep pathname if exists', async () => {
+      stubProcess({ server: 'couch-2.local', user: 'medic', pass: 'pwd' });
+      fetchStub.rejects(new Response('', { status: 503 }));
+      fetchStub.withArgs('http://medic:pwd@couch-2.local:5984/').resolves(new Response('{"couchdb":"Welcome","version":"3.3.2"}', { status: 200 }));
+      fetchStub.withArgs('http://medic:pwd@couch-2.local:5984/_node/_local').resolves(new Response('{"name":"couchdb@127.0.0.1"}', { status: 200 }));
+
+      const url = await utils.getUrl('a_path', true);
+      expect(url).to.equal('http://medic:pwd@couch-2.local:5984/_node/_local/a_path');
     });
   });
 

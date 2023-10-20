@@ -28,3 +28,5 @@ jobs:
       - run: npm ci
       - run: npm run e2e-single-node
       - run: npm run e2e-multi-node
+      - run: npm run e2e-single-node-couch3
+      - run: npm run e2e-multi-node-couch3

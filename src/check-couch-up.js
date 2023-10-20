@@ -1,5 +1,5 @@
 const utils = require('./utils');
-const NUM_RETRY = 100;
+const NUM_RETRY = 200;
 const TIMEOUT_RETRY = 1000; // 1 second
 
 const isCouchUp = async () => {

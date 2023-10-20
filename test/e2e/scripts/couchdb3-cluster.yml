@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  couchdb-1.local:
+    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.4.0
+    volumes:
+      - ${DB1_DATA}:/opt/couchdb/data
+      - cht-credentials:/opt/couchdb/etc/local.d/
+    environment:
+      - "COUCHDB_USER=${COUCHDB_USER:-admin}"
+      - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}"
+      - "COUCHDB_SECRET=${COUCHDB_SECRET}"
+      - "COUCHDB_UUID=${COUCHDB_UUID}"
+      - "SVC_NAME=${SVC1_NAME:-couchdb-1.local}"
+      - "CLUSTER_PEER_IPS=couchdb-2.local,couchdb-3.local"
+      - "COUCHDB_LOG_LEVEL=${COUCHDB_LOG_LEVEL:-log}"
+    ports:
+      - "${COUCH_PORT}:5984"
+      - "${COUCH_CLUSTER_PORT}:5986"
+    networks:
+      - cht-net
+
+  couchdb-2.local:
+    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.4.0
+    volumes:
+      - ${DB2_DATA}:/opt/couchdb/data
+    environment:
+      - "COUCHDB_USER=${COUCHDB_USER:-admin}"
+      - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}"
+      - "COUCHDB_SECRET=${COUCHDB_SECRET}"
+      - "COUCHDB_UUID=${COUCHDB_UUID}"
+      - "SVC_NAME=${SVC2_NAME:-couchdb-2.local}"
+      - "COUCHDB_LOG_LEVEL=${COUCHDB_LOG_LEVEL:-log}"
+      - "COUCHDB_SYNC_ADMINS_NODE=${COUCHDB_SYNC_ADMINS_NODE:-couchdb-1.local}"
+    networks:
+      - cht-net
+
+  couchdb-3.local:
+    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.4.0
+    volumes:
+      - ${DB3_DATA}:/opt/couchdb/data
+    environment:
+      - "COUCHDB_USER=${COUCHDB_USER:-admin}"
+      - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}"
+      - "COUCHDB_SECRET=${COUCHDB_SECRET}"
+      - "COUCHDB_UUID=${COUCHDB_UUID}"
+      - "SVC_NAME=${SVC3_NAME:-couchdb-3.local}"
+      - "COUCHDB_LOG_LEVEL=${COUCHDB_LOG_LEVEL:-log}"
+      - "COUCHDB_SYNC_ADMINS_NODE=${COUCHDB_SYNC_ADMINS_NODE:-couchdb-1.local}"
+    networks:
+      - cht-net
+
+volumes:
+  cht-credentials:
+
+networks:
+  cht-net:
+    name: ${CHT_NETWORK:-cht-net}
