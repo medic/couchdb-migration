@@ -1,7 +1,7 @@
 #!/bin/bash
-set -e
+set -eu
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd $BASEDIR
+cd "$BASEDIR"
 
 user=admin
 password=pass
@@ -32,18 +32,18 @@ docker network create $CHT_NETWORK || true
 docker-compose -f ../docker-compose-test.yml up --build
 
 # launch vanilla couch, populate with some data
-docker-compose -f ./scripts/couchdb-vanilla.yml up -d
+docker-compose -f ./scripts/couchdb-vanilla.yml up --wait
 docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
 node ./scripts/generate-documents $jsondataddir
 # pre-index 4.0.1 views
 docker-compose -f ../docker-compose-test.yml run couch-migration pre-index-views 4.4.0
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
-# export env for 4.x couch
+# export env for cht 4.x couch
 export $(docker-compose -f ../docker-compose-test.yml run couch-migration get-env | xargs)
 docker-compose -f ./scripts/couchdb-vanilla.yml down --remove-orphans --volumes
 
 # launch cht 4.x CouchDb cluster
-docker-compose -f ./scripts/couchdb3-cluster.yml up -d
+docker-compose -f ./scripts/couchdb3-cluster.yml up --wait
 docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up 3
 
 # generate shard matrix
