@@ -4,19 +4,34 @@ const moveShard = require('./move-shard');
 const moveNode = async (toNode) => {
   const removedNodes = [];
 
-  if (!toNode) {
-    const nodes = await utils.getNodes();
-    if (nodes.length > 1) {
-      throw new Error('More than one node found.');
+  if (typeof toNode === 'object') {
+    // Multiple node migration
+    const shards = await utils.getShards();
+    for (const [oldNode, newNode] of Object.entries(toNode)) {
+      for (const shard of shards) {
+        if (shard.nodes.includes(oldNode)) {
+          const oldNodes = await moveShard.moveShard(shard, newNode);
+          removedNodes.push(...oldNodes);
+        }
+      }
     }
-    toNode = nodes[0];
+  } else {
+    // Single node migration
+    if (!toNode) {
+      const nodes = await utils.getNodes();
+      if (nodes.length > 1) {
+        throw new Error('More than one node found. Please specify an argument providing a m');
+      }
+      toNode = nodes[0];
+    }
+
+    const shards = await utils.getShards();
+    for (const shard of shards) {
+      const oldNodes = await moveShard.moveShard(shard, toNode);
+      removedNodes.push(...oldNodes);
+    }
   }
 
-  const shards = await utils.getShards();
-  for (const shard of shards) {
-    const oldNodes = await moveShard.moveShard(shard, toNode);
-    removedNodes.push(...oldNodes);
-  }
   return [...new Set(removedNodes)];
 };
 
