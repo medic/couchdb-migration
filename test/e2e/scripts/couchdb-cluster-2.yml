@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   couchdb-1-namespace-svc-cluster.local:
-    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.0.0-4.0.0
+    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.10.0
     volumes:
       - ${DB1_DATA}:/opt/couchdb/data
       - cht-credentials:/opt/couchdb/etc/local.d/
@@ -21,7 +21,7 @@ services:
       - cht-net
 
   couchdb-2-namespace-svc-cluster.local:
-    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.0.0-4.0.0
+    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.10.0
     volumes:
       - ${DB2_DATA}:/opt/couchdb/data
     environment:
@@ -36,7 +36,7 @@ services:
       - cht-net
 
   couchdb-3-namespace-svc-cluster.local:
-    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.0.0-4.0.0
+    image: public.ecr.aws/s5s3h4s7/cht-couchdb:4.10.0
     volumes:
       - ${DB3_DATA}:/opt/couchdb/data
     environment:
