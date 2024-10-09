@@ -63,3 +63,21 @@ node ./scripts/assert-dbs.js $jsondataddir $shard_matrix
 
 docker-compose -f ./scripts/couchdb-cluster.yml down --remove-orphans --volumes
 
+# launch a different cht 4.x CouchDb cluster
+docker-compose -f ./scripts/couchdb-cluster-2.yml up -d
+docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up 3
+
+# change database metadata to match new node name
+# Move nodes one by one using move-node.js oldNode:newNode
+docker-compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-1.local:couchdb@couchdb-1-namespace-svc-cluster.local
+docker-compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-2.local:couchdb@couchdb-2-namespace-svc-cluster.local
+docker-compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-3.local:couchdb@couchdb-3-namespace-svc-cluster.local
+
+docker-compose -f ../docker-compose-test.yml run couch-migration verify
+
+# generate shard matrix
+shard_matrix_2=$(docker-compose -f ../docker-compose-test.yml run couch-migration generate-shard-distribution-matrix)
+echo $shard_matrix_2
+
+# test that data exists, database shard maps are correct and view indexes are preserved
+node ./scripts/assert-dbs.js $jsondataddir $shard_matrix_2

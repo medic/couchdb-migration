@@ -7,13 +7,16 @@ const { removeNode } = require('../src/remove-node');
   try {
     let toNode;
     if (process.argv.length > 2) {
-      // Parse command-line arguments for node mapping in the following format:
-      // move-node.js oldNode1:newNode1 oldNode2:newNode2 oldNode3:newNode3
-      toNode = process.argv.slice(2).reduce((nodeMapping, arg) => {
+      // Parse command-line argument for node mapping in the following format:
+      // move-node.js oldNode:newNode
+      const arg = process.argv[2];
+      if (arg.includes(':')) {
         const [oldNode, newNode] = arg.split(':');
-        nodeMapping[oldNode] = newNode;
-        return nodeMapping;
-      }, {});
+        toNode = { [oldNode]: newNode };
+      } else {
+        // Single node migration with target node specified
+        toNode = arg;
+      }
     }
 
     const removedNodes = await moveNode(toNode);
@@ -21,7 +24,7 @@ const { removeNode } = require('../src/remove-node');
       await removeNode(node);
     }
     await syncShards();
-    console.log('Node(s) moved successfully');
+    console.log('Node moved successfully');
   } catch (err) {
     console.error('An unexpected error occurred', err);
     process.exit(1);
