@@ -5,7 +5,7 @@ const { setupUtils } = require('./mocha-hooks');
 let clock;
 let originalSetTimeout;
 const TIMEOUT_RETRY = 1000; // 1 second
-const MAX_RETRIES = 100;
+const MAX_RETRIES = 200;
 
 describe('check-couch-up', () => {
   beforeEach(async () => {
@@ -38,7 +38,7 @@ describe('check-couch-up', () => {
       expect(utils.request.callCount).to.equal(retries + 1);
     });
 
-    it('should throw an error after 100 retries', async () => {
+    it('should throw an error after 200 retries', async () => {
       sinon.stub(utils, 'request').rejects({ status: 503 });
       try {
         const promise = checkCouchUp.checkCouchUp();
