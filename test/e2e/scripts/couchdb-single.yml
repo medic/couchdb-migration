@@ -25,3 +25,4 @@ volumes:
 networks:
   cht-net:
     name: ${CHT_NETWORK:-cht-net}
+    external: true
