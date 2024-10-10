@@ -9,7 +9,7 @@ password=pass
 couch1dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 couch2dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
 couch3dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
-mkdir -p $couch2dir/shards $couch2dir/.shards $couch3dir/shards $couch3dir/.shards
+mkdir -p $couch1dir/shards $couch1dir/.shards $couch2dir/shards $couch2dir/.shards $couch3dir/shards $couch3dir/.shards
 jsondataddir=$(mktemp -d -t json-XXXXXXXXXX)
 
 export DB1_DATA=$couch1dir
@@ -55,7 +55,8 @@ echo $shard_matrix
 echo $file_matrix
 # moves shard data files to their corresponding nodes, according to the matrix
 docker compose -f ../docker-compose-test.yml run couch-migration shard-move-instructions $shard_matrix
-node ./scripts/distribute-shards.js $shard_matrix $file_matrix
+node ./scripts/distribute-shards.js "$shard_matrix" "$file_matrix"
+
 # change database metadata to match the shard physical locations
 docker compose -f ../docker-compose-test.yml run couch-migration move-shards $shard_matrix
 docker compose -f ../docker-compose-test.yml run couch-migration verify
