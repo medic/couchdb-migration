@@ -5,7 +5,7 @@ const { setupUtils } = require('./mocha-hooks');
 let clock;
 let originalSetTimeout;
 const TIMEOUT_RETRY = 1000; // 1 second
-const MAX_RETRIES = 200;
+const MAX_RETRIES = 300;
 
 describe('check-couch-up', () => {
   beforeEach(async () => {
