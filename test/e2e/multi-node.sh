@@ -6,11 +6,12 @@ cd "$BASEDIR"
 user=admin
 password=pass
 
-couch1dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
-couch2dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
-couch3dir=$(mktemp -d -t couchdb-2x-XXXXXXXXXX)
+couch1dir=$(mktemp -d -t couchdb-2x.XXXXXXXXXX)
+couch2dir=$(mktemp -d -t couchdb-2x.XXXXXXXXXX)
+couch3dir=$(mktemp -d -t couchdb-2x.XXXXXXXXXX)
+
 mkdir -p $couch1dir/shards $couch1dir/.shards $couch2dir/shards $couch2dir/.shards $couch3dir/shards $couch3dir/.shards
-jsondataddir=$(mktemp -d -t json-XXXXXXXXXX)
+jsondataddir=$(mktemp -d -t json.XXXXXXXXXX)
 
 export DB1_DATA=$couch1dir
 export DB2_DATA=$couch2dir
@@ -25,6 +26,7 @@ export COUCH_URL=http://$user:$password@couchdb-1.local:$COUCH_PORT
 
 # cleanup from last test, in case of interruptions
 docker rm -f -v scripts-couchdb-1.local-1 scripts-couchdb-2.local-1 scripts-couchdb-3.local-1
+docker rm -f -v scripts-couchdb-1-namespace-svc-cluster.local-1 scripts-couchdb-2-namespace-svc-cluster.local-1 scripts-couchdb-3-namespace-svc-cluster.local-1
 
 # create docker network
 docker network create $CHT_NETWORK || true
@@ -59,27 +61,37 @@ node ./scripts/distribute-shards.js "$shard_matrix" "$file_matrix"
 
 # change database metadata to match the shard physical locations
 docker compose -f ../docker-compose-test.yml run couch-migration move-shards $shard_matrix
+# Remove old node from cluster
+docker compose -f ../docker-compose-test.yml run couch-migration remove-node couchdb@127.0.0.1
+
 docker compose -f ../docker-compose-test.yml run couch-migration verify
 # test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir $shard_matrix
+
+# Let's get the shard mapping - we need this to migrate to a different cluster.
+shard_mapping=$(docker compose -f ../docker-compose-test.yml run couch-migration get-shard-mapping)
+echo $shard_mapping
 
 docker compose -f ./scripts/couchdb-cluster.yml down --remove-orphans --volumes
 
 # launch a different cht 4.x CouchDb cluster
 docker compose -f ./scripts/couchdb-cluster-2.yml up -d
+
+# set new COUCH_URL for cluster-2
+export COUCH_URL=http://$user:$password@couchdb-1-namespace-svc-cluster.local:$COUCH_PORT
+
 docker compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up 3
 
 # change database metadata to match new node name
 # Move nodes one by one using move-node.js oldNode:newNode
-docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-1.local:couchdb@couchdb-1-namespace-svc-cluster.local
-docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-2.local:couchdb@couchdb-2-namespace-svc-cluster.local
-docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-3.local:couchdb@couchdb-3-namespace-svc-cluster.local
+docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-1.local:couchdb@couchdb-1-namespace-svc-cluster.local $shard_mapping
+docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-2.local:couchdb@couchdb-2-namespace-svc-cluster.local $shard_mapping
+docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-3.local:couchdb@couchdb-3-namespace-svc-cluster.local $shard_mapping
 
 docker compose -f ../docker-compose-test.yml run couch-migration verify
 
-# generate shard matrix
-shard_matrix_2=$(docker compose -f ../docker-compose-test.yml run couch-migration generate-shard-distribution-matrix)
-echo $shard_matrix_2
-
 # test that data exists, database shard maps are correct and view indexes are preserved
-node ./scripts/assert-dbs.js $jsondataddir $shard_matrix_2
+shard_mapping2=$(docker compose -f ../docker-compose-test.yml run couch-migration get-shard-mapping)
+node ./scripts/assert-dbs.js $jsondataddir $shard_mapping2
+
+docker compose -f ./scripts/couchdb-cluster-2.yml down --remove-orphans --volumes

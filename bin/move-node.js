@@ -1,30 +1,46 @@
 #!/usr/bin/env node
 
+const [,, toNode, shardMapJson] = process.argv;
+
 const { moveNode, syncShards } = require('../src/move-node');
 const { removeNode } = require('../src/remove-node');
 
+const parseNodeMapping = function (input) {
+  if (input.startsWith('{')) {
+    return JSON.parse(input);
+  } else if (input.includes(':')) {
+    const [oldNode, newNode] = input.split(':');
+    return { [oldNode]: newNode };
+  }
+  return input;
+};
+
 (async () => {
   try {
-    let toNode;
-    if (process.argv.length > 2) {
-      // Parse command-line argument for node mapping in the following format:
-      // move-node.js oldNode:newNode
-      const arg = process.argv[2];
-      if (arg.includes(':')) {
-        const [oldNode, newNode] = arg.split(':');
-        toNode = { [oldNode]: newNode };
-      } else {
-        // Single node migration with target node specified
-        toNode = arg;
-      }
+    if (!toNode) {
+      console.error('Please provide the target node or node mapping.');
+      console.error('Usage for single-node migration: move-node newNode');
+      console.error('Usage for multi-node migration:');
+      console.error(
+        '  move-node \'{"oldNode":"newNode"}\'' +
+        '\'{"shards":["shard1","shard2"],"nodes":{"shard1":["oldNode"],"shard2":["oldNode"]}}\'');
+      console.error('  OR');
+      console.error(
+        '  move-node oldNode:newNode \'' +
+        '{"shards":["shard1","shard2"],"nodes":{"shard1":["oldNode"],"shard2":["oldNode"]}}\'');
+      process.exit(1);
     }
 
-    const removedNodes = await moveNode(toNode);
+    const parsedToNode = parseNodeMapping(toNode);
+
+    const removedNodes = await moveNode(parsedToNode, shardMapJson);
+    console.log('Node moved successfully');
+
     for (const node of removedNodes) {
       await removeNode(node);
     }
     await syncShards();
-    console.log('Node moved successfully');
+    console.log('Removed nodes:', removedNodes);
   } catch (err) {
     console.error('An unexpected error occurred', err);
     process.exit(1);

@@ -1,18 +1,27 @@
 const utils = require('./utils');
 const moveShard = require('./move-shard');
 
-const moveNode = async (toNode) => {
+const moveNode = async (toNode, shardMapJson) => {
   const removedNodes = [];
 
   if (typeof toNode === 'object') {
-    // Migration with specified oldNode:newNode mapping for when migrating multiple nodes one by one
+    // Multi-node migration
+    if (!shardMapJson) {
+      throw new Error('Shard map JSON is required for multi-node migration');
+    }
+    const shardMap = JSON.parse(shardMapJson);
     const [oldNode, newNode] = Object.entries(toNode)[0];
-    const shards = await utils.getShards();
-    for (const shard of shards) {
-      if (shard.nodes.includes(oldNode)) {
-        const oldNodes = await moveShard.moveShard(shard, newNode);
+    console.log(`Migrating from ${oldNode} to ${newNode}`);
+
+    for (const [shardRange, currentNode] of Object.entries(shardMap)) {
+      if (currentNode === oldNode) {
+        console.log(`Moving shard ${shardRange} from ${oldNode} to ${newNode}`);
+        const oldNodes = await moveShard.moveShard(shardRange, newNode);
         removedNodes.push(...oldNodes);
       }
+    }
+    if (!removedNodes.includes(oldNode)) {
+      removedNodes.push(oldNode);
     }
   } else {
     // Single node migration

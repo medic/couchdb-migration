@@ -1,5 +1,5 @@
 const utils = require('./utils');
-const NUM_RETRY = 200;
+const NUM_RETRY = 300;
 const TIMEOUT_RETRY = 1000; // 1 second
 
 const isCouchUp = async () => {
@@ -33,14 +33,14 @@ const repeatRetry = async (promiseFn) => {
 const checkCouchUp = async () => {
   const isUp = await repeatRetry(isCouchUp);
   if (!isUp) {
-    throw new Error('CouchDb is not up after 100 seconds.');
+    throw new Error('CouchDb is not up after 300 seconds.');
   }
 };
 
 const checkClusterReady = async (nbrNodes) => {
   const isReady = await repeatRetry(isClusterReady.bind({}, nbrNodes));
   if (!isReady) {
-    throw new Error('CouchDb Cluster is not ready after 100 seconds.');
+    throw new Error('CouchDb Cluster is not ready after 300 seconds.');
   }
 };
 

@@ -1,6 +1,6 @@
 {
   "name": "couchdb-migration",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Tool that interfaces with CouchDB to help migrating data within a cluster.",
   "scripts": {
     "eslint": "eslint --color --cache ./src ./test",
@@ -9,7 +9,7 @@
     "test": "npm run eslint && npm run coverage",
     "e2e-single-node": "./test/e2e/single-node.sh",
     "e2e-single-node-couch3": "./test/e2e/single-node-3.sh",
-    "e2e-multi-node": "sudo ./test/e2e/multi-node.sh",
+    "e2e-multi-node": "./test/e2e/multi-node.sh",
     "e2e-multi-node-couch3": "sudo ./test/e2e/multi-node-3.sh"
   },
   "bin": {
@@ -22,7 +22,8 @@
     "remove-node": "bin/remove-node.js",
     "check-couchdb-up": "bin/check-couchdb-up.js",
     "pre-index-views": "bin/pre-index-views.js",
-    "verify": "bin/verify.js"
+    "verify": "bin/verify.js",
+    "get-shard-mapping": "bin/get-shard-mapping.js"
   },
   "repository": {
     "type": "git",
