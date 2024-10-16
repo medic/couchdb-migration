@@ -180,7 +180,7 @@ describe('get_shard_mapping', () => {
       expect(utils.getUrl.callCount).to.equal(dbs.length);
       expect(utils.request.callCount).to.equal(dbs.length);
       expect(consoleWarnStub.callCount).to.equal(dbs.length);
-      dbs.forEach((db) => {
+      dbs.forEach(() => {
         expect(consoleWarnStub.calledWith(`Unexpected number of nodes for range 00000000-1fffffff: 0`)).to.be.true;
       });
     });
