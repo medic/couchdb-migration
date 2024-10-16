@@ -82,6 +82,55 @@ describe('move-node', () => {
 
       await expect(moveNodeSpec.moveNode()).to.be.rejectedWith(Error, 'holdupaminute');
     });
+
+    it('should handle multi-node migration in clustered CouchDB', async () => {
+      const shardMap = {
+        '00000000-1fffffff': 'node1',
+        '20000000-3fffffff': 'node2',
+        '40000000-5fffffff': 'node1',
+        '60000000-7fffffff': 'node2'
+      };
+      const toNode = { 'node1': 'node3' };
+      const shardMapJson = JSON.stringify(shardMap);
+
+      sinon.stub(moveShard, 'moveShard').resolves(['node1']);
+      const consoleLogStub = sinon.stub(console, 'log');
+
+      const result = await moveNodeSpec.moveNode(toNode, shardMapJson);
+
+      expect(result).to.deep.equal(['node1']);
+      expect(moveShard.moveShard.callCount).to.equal(2);
+      expect(moveShard.moveShard.args).to.deep.equal([
+        ['00000000-1fffffff', 'node3'],
+        ['40000000-5fffffff', 'node3']
+      ]);
+      expect(consoleLogStub.calledWith('Migrating from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith('Moving shard 00000000-1fffffff from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith('Moving shard 40000000-5fffffff from node1 to node3')).to.be.true;
+    });
+
+    it('should throw an error if shard map JSON is missing in multi-node migration', async () => {
+      const toNode = { 'node1': 'node3' };
+
+      await expect(moveNodeSpec.moveNode(toNode))
+        .to.be.rejectedWith(Error, 'Shard map JSON is required for multi-node migration');
+    });
+
+    it('should handle case where old node is not in any shard range', async () => {
+      const shardMap = {
+        '00000000-1fffffff': 'node2',
+        '20000000-3fffffff': 'node2'
+      };
+      const toNode = { 'node1': 'node3' };
+      const shardMapJson = JSON.stringify(shardMap);
+
+      sinon.stub(moveShard, 'moveShard').resolves([]);
+
+      const result = await moveNodeSpec.moveNode(toNode, shardMapJson);
+
+      expect(result).to.deep.equal(['node1']);
+      expect(moveShard.moveShard.callCount).to.equal(0);
+    });
   });
 
   describe('syncShards', () => {

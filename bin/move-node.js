@@ -5,15 +5,23 @@ const [,, toNode, shardMapJson] = process.argv;
 const { moveNode, syncShards } = require('../src/move-node');
 const { removeNode } = require('../src/remove-node');
 
-const parseNodeMapping = function (input) {
+const parseNodeMapping = (input) => {
   if (!input) {
-    return undefined;
+    //single node migration with unspecified node
+    return;
   } else if (input.startsWith('{')) {
-    return JSON.parse(input);
-  } else if (input.includes(':')) {
-    const [oldNode, newNode] = input.split(':');
-    return { [oldNode]: newNode };
+    //multi-node migration with specified node mapping
+    //Example input: '{"oldNode":"newNode"}'
+    try {
+      return JSON.parse(input);
+    }
+    catch (err) {
+      throw new Error(
+        `Invalid node mapping. Please specify the node mapping in the format '{"<oldNode>":"<newNode>"}'`
+      );
+    }
   }
+  //single node migration with specified node
   return input;
 };
 

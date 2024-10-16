@@ -84,9 +84,9 @@ docker compose -f ../docker-compose-test.yml run couch-migration check-couchdb-u
 
 # change database metadata to match new node name
 # Move nodes one by one using move-node.js oldNode:newNode
-docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-1.local:couchdb@couchdb-1-namespace-svc-cluster.local $shard_mapping
-docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-2.local:couchdb@couchdb-2-namespace-svc-cluster.local $shard_mapping
-docker compose -f ../docker-compose-test.yml run couch-migration move-node couchdb@couchdb-3.local:couchdb@couchdb-3-namespace-svc-cluster.local $shard_mapping
+docker compose -f ../docker-compose-test.yml run couch-migration move-node '{"couchdb@couchdb-1.local":"couchdb@couchdb-1-namespace-svc-cluster.local"}' $shard_mapping
+docker compose -f ../docker-compose-test.yml run couch-migration move-node '{"couchdb@couchdb-2.local":"couchdb@couchdb-2-namespace-svc-cluster.local"}' $shard_mapping
+docker compose -f ../docker-compose-test.yml run couch-migration move-node '{"couchdb@couchdb-3.local":"couchdb@couchdb-3-namespace-svc-cluster.local"}' $shard_mapping
 
 docker compose -f ../docker-compose-test.yml run couch-migration verify
 
