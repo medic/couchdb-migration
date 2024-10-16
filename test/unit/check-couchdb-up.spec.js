@@ -5,7 +5,7 @@ const { setupUtils } = require('./mocha-hooks');
 let clock;
 let originalSetTimeout;
 const TIMEOUT_RETRY = 1000; // 1 second
-const MAX_RETRIES = 200;
+const MAX_RETRIES = 300;
 
 describe('check-couch-up', () => {
   beforeEach(async () => {
@@ -46,7 +46,7 @@ describe('check-couch-up', () => {
         await promise;
         expect.fail('Should have thrown');
       } catch (err) {
-        expect(err.message).to.equal('CouchDb is not up after 100 seconds.');
+        expect(err.message).to.equal('CouchDb is not up after 300 seconds.');
         expect(utils.request.callCount).to.equal(MAX_RETRIES);
       }
     });
@@ -79,7 +79,7 @@ describe('check-couch-up', () => {
         await promise;
         expect.fail('Should have thrown');
       } catch (err) {
-        expect(err.message).to.equal('CouchDb Cluster is not ready after 100 seconds.');
+        expect(err.message).to.equal('CouchDb Cluster is not ready after 300 seconds.');
         expect(utils.getNodes.callCount).to.equal(MAX_RETRIES);
       }
     });
