@@ -1,7 +1,7 @@
 const utils = require('./utils');
 const moveShard = require('./move-shard');
 
-const replaceNodeInStandAloneCouch = async (toNode) => {
+const replaceForSingleNode = async (toNode) => {
   const removedNodes = [];
 
   if (!toNode) {
@@ -17,10 +17,10 @@ const replaceNodeInStandAloneCouch = async (toNode) => {
     const oldNodes = await moveShard.moveShard(shard, toNode);
     removedNodes.push(...oldNodes);
   }
-  return removedNodes;
+  return [...new Set(removedNodes)];
 };
 
-const replaceNodeInClusteredCouch = async (toNode, shardMapJson) => {
+const replaceInCluster = async (toNode, shardMapJson) => {
   const removedNodes = [];
   if (!shardMapJson) {
     throw new Error('Shard map JSON is required for multi-node migration');
@@ -39,26 +39,17 @@ const replaceNodeInClusteredCouch = async (toNode, shardMapJson) => {
   if (!removedNodes.includes(oldNode)) {
     removedNodes.push(oldNode);
   }
-return [...new Set(removedNodes)];
+  return [...new Set(removedNodes)];
 };
 
 const moveNode = async (nodeMap, shardMapJson) => {
   if (typeof nodeMap === 'object') {
+    // Multi-node migration - replace node in clustered couch
     return await replaceInCluster(nodeMap, shardMapJson);
   }
-  
-  return  await replaceForSingleNode(nodeMap);
-};
-  let removedNodes = [];
-  if (typeof toNode === 'object') {
-    // Multi-node migration - replace node in clustered couch
-    removedNodes = await replaceNodeInClusteredCouch(toNode, shardMapJson);
-  } else {
-    // Single node migration - replace node in standalone couch
-    removedNodes = await replaceNodeInStandAloneCouch(toNode);
-  }
 
-  return [...new Set(removedNodes)];
+  // Single node migration - replace node in standalone couch
+  return  await replaceForSingleNode(nodeMap);
 };
 
 const syncShards = async () => {

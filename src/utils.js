@@ -221,6 +221,35 @@ const getShards = async () => {
   }
 };
 
+/*
+This function creates a mapping of shard ranges to nodes.
+*/
+const getShardMapping = async () => {
+  try {
+    const allDbs = await getDbs();
+    const shardMap = {};
+
+    for (const db of allDbs) {
+      const url = await getUrl(`${db}/_shards`);
+      const shardInfo = await request({ url });
+
+      for (const [shardRange, nodeList] of Object.entries(shardInfo.shards)) {
+        // In n=1 setup, there should be only one node per shard range.
+        // We will have to revisit this if we ever support n>1.
+        if (nodeList.length !== 1) {
+          console.warn(`Unexpected number of nodes for range ${shardRange}: ${nodeList.length}`);
+        }
+        shardMap[shardRange] = nodeList[0];
+      }
+    }
+
+    return JSON.stringify(shardMap);
+  } catch (err) {
+    console.error('Error getting shard mapping:', err);
+    throw new Error('Failed to get shard mapping');
+  }
+};
+
 const getNodes = async () => {
   const membership = await getMembership();
   return membership.all_nodes;
@@ -257,6 +286,7 @@ module.exports = {
   deleteNode,
   syncShards,
   getShards,
+  getShardMapping,
   getNodes,
   getConfig,
   getCouchUrl,
