@@ -1,8 +1,8 @@
 version: '3.9'
 
 services:
-  couchdb-1.local:
-    image: public.ecr.aws/medic/cht-couchdb:4.2.0
+  couchdb-1-namespace-svc-cluster.local:
+    image: public.ecr.aws/medic/cht-couchdb:4.10.0
     volumes:
       - ${DB1_DATA}:/opt/couchdb/data
       - cht-credentials:/opt/couchdb/etc/local.d/
@@ -11,8 +11,8 @@ services:
       - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}"
       - "COUCHDB_SECRET=${COUCHDB_SECRET}"
       - "COUCHDB_UUID=${COUCHDB_UUID}"
-      - "SVC_NAME=${SVC1_NAME:-couchdb-1.local}"
-      - "CLUSTER_PEER_IPS=couchdb-2.local,couchdb-3.local"
+      - "SVC_NAME=${SVC1_NAME:-couchdb-1-namespace-svc-cluster.local}"
+      - "CLUSTER_PEER_IPS=couchdb-2-namespace-svc-cluster.local,couchdb-3-namespace-svc-cluster.local"
       - "COUCHDB_LOG_LEVEL=${COUCHDB_LOG_LEVEL:-log}"
     ports:
       - "${COUCH_PORT}:5984"
@@ -20,8 +20,8 @@ services:
     networks:
       - cht-net
 
-  couchdb-2.local:
-    image: public.ecr.aws/medic/cht-couchdb:4.2.0
+  couchdb-2-namespace-svc-cluster.local:
+    image: public.ecr.aws/medic/cht-couchdb:4.10.0
     volumes:
       - ${DB2_DATA}:/opt/couchdb/data
     environment:
@@ -29,14 +29,14 @@ services:
       - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}"
       - "COUCHDB_SECRET=${COUCHDB_SECRET}"
       - "COUCHDB_UUID=${COUCHDB_UUID}"
-      - "SVC_NAME=${SVC2_NAME:-couchdb-2.local}"
+      - "SVC_NAME=${SVC2_NAME:-couchdb-2-namespace-svc-cluster.local}"
       - "COUCHDB_LOG_LEVEL=${COUCHDB_LOG_LEVEL:-log}"
-      - "COUCHDB_SYNC_ADMINS_NODE=${COUCHDB_SYNC_ADMINS_NODE:-couchdb-1.local}"
+      - "COUCHDB_SYNC_ADMINS_NODE=${COUCHDB_SYNC_ADMINS_NODE:-couchdb-1-namespace-svc-cluster.local}"
     networks:
       - cht-net
 
-  couchdb-3.local:
-    image: public.ecr.aws/medic/cht-couchdb:4.2.0
+  couchdb-3-namespace-svc-cluster.local:
+    image: public.ecr.aws/medic/cht-couchdb:4.10.0
     volumes:
       - ${DB3_DATA}:/opt/couchdb/data
     environment:
@@ -44,9 +44,9 @@ services:
       - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set}"
       - "COUCHDB_SECRET=${COUCHDB_SECRET}"
       - "COUCHDB_UUID=${COUCHDB_UUID}"
-      - "SVC_NAME=${SVC3_NAME:-couchdb-3.local}"
+      - "SVC_NAME=${SVC3_NAME:-couchdb-3-namespace-svc-cluster.local}"
       - "COUCHDB_LOG_LEVEL=${COUCHDB_LOG_LEVEL:-log}"
-      - "COUCHDB_SYNC_ADMINS_NODE=${COUCHDB_SYNC_ADMINS_NODE:-couchdb-1.local}"
+      - "COUCHDB_SYNC_ADMINS_NODE=${COUCHDB_SYNC_ADMINS_NODE:-couchdb-1-namespace-svc-cluster.local}"
     networks:
       - cht-net
 

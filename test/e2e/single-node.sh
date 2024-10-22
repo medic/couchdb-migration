@@ -24,27 +24,28 @@ docker rm -f -v scripts-couchdb-1.local-1
 # create docker network
 docker network create $CHT_NETWORK || true
 # build service image
-docker-compose -f ../docker-compose-test.yml up --build
+docker compose -f ../docker-compose-test.yml up --build
 
 # launch vanilla couch, populate with some data
-docker-compose -f ./scripts/couchdb-vanilla.yml up -d
-docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
+docker compose -f ./scripts/couchdb-vanilla.yml up -d
+docker compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
 node ./scripts/generate-documents $jsondataddir
 # pre-index 4.0.1 views
-docker-compose -f ../docker-compose-test.yml run couch-migration pre-index-views 4.0.1
+docker compose -f ../docker-compose-test.yml run couch-migration pre-index-views 4.0.1
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
+
 # export env for cht 4.x couch
-export $(docker-compose -f ../docker-compose-test.yml run couch-migration get-env | xargs)
-docker-compose -f ./scripts/couchdb-vanilla.yml down --remove-orphans --volumes
+export $(docker compose -f ../docker-compose-test.yml run couch-migration get-env | xargs)
+docker compose -f ./scripts/couchdb-vanilla.yml down --remove-orphans --volumes
 
 # launch cht 4.x CouchDb single node
-docker-compose -f ./scripts/couchdb-single.yml up -d
-docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
+docker compose -f ./scripts/couchdb-single.yml up -d
+docker compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
 # change database metadata to match new node name
-docker-compose -f ../docker-compose-test.yml run couch-migration move-node
-docker-compose -f ../docker-compose-test.yml run couch-migration verify
+docker compose -f ../docker-compose-test.yml run couch-migration move-node
+docker compose -f ../docker-compose-test.yml run couch-migration verify
 # test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir
 
-docker-compose -f ./scripts/couchdb-single.yml down --remove-orphans --volumes
+docker compose -f ./scripts/couchdb-single.yml down --remove-orphans --volumes
 

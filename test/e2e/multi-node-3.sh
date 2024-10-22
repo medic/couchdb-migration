@@ -29,37 +29,37 @@ docker rm -f -v scripts-couchdb-1.local-1 scripts-couchdb-2.local-1 scripts-couc
 # create docker network
 docker network create $CHT_NETWORK || true
 # build service image
-docker-compose -f ../docker-compose-test.yml up --build
+docker compose -f ../docker-compose-test.yml up --build
 
 # launch vanilla couch, populate with some data
-docker-compose -f ./scripts/couchdb-vanilla.yml up -d
-docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
+docker compose -f ./scripts/couchdb-vanilla.yml up -d
+docker compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up
 node ./scripts/generate-documents $jsondataddir
 # pre-index 4.0.1 views
-docker-compose -f ../docker-compose-test.yml run couch-migration pre-index-views 4.4.0
+docker compose -f ../docker-compose-test.yml run couch-migration pre-index-views 4.4.0
 sleep 5 # this is needed, CouchDb runs fsync with a 5 second delay
 # export env for cht 4.x couch
-export $(docker-compose -f ../docker-compose-test.yml run couch-migration get-env | xargs)
-docker-compose -f ./scripts/couchdb-vanilla.yml down --remove-orphans --volumes
+export $(docker compose -f ../docker-compose-test.yml run couch-migration get-env | xargs)
+docker compose -f ./scripts/couchdb-vanilla.yml down --remove-orphans --volumes
 
 # launch cht 4.x CouchDb cluster
-docker-compose -f ./scripts/couchdb3-cluster.yml up -d
-docker-compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up 3
+docker compose -f ./scripts/couchdb3-cluster.yml up -d
+docker compose -f ../docker-compose-test.yml run couch-migration check-couchdb-up 3
 
 # generate shard matrix
 # this is an object that assigns every shard to one of the nodes
-shard_matrix=$(docker-compose -f ../docker-compose-test.yml run couch-migration generate-shard-distribution-matrix)
+shard_matrix=$(docker compose -f ../docker-compose-test.yml run couch-migration generate-shard-distribution-matrix)
 file_matrix="{\"couchdb@couchdb-1.local\":\"$couch1dir\",\"couchdb@couchdb-2.local\":\"$couch2dir\",\"couchdb@couchdb-3.local\":\"$couch3dir\"}"
 echo $shard_matrix
 echo $file_matrix
 # moves shard data files to their corresponding nodes, according to the matrix
-docker-compose -f ../docker-compose-test.yml run couch-migration shard-move-instructions $shard_matrix
+docker compose -f ../docker-compose-test.yml run couch-migration shard-move-instructions $shard_matrix
 node ./scripts/distribute-shards.js $shard_matrix $file_matrix
 # change database metadata to match the shard physical locations
-docker-compose -f ../docker-compose-test.yml run couch-migration move-shards $shard_matrix
-docker-compose -f ../docker-compose-test.yml run couch-migration verify
+docker compose -f ../docker-compose-test.yml run couch-migration move-shards $shard_matrix
+docker compose -f ../docker-compose-test.yml run couch-migration verify
 # test that data exists, database shard maps are correct and view indexes are preserved
 node ./scripts/assert-dbs.js $jsondataddir $shard_matrix
 
-docker-compose -f ./scripts/couchdb-cluster.yml down --remove-orphans --volumes
+docker compose -f ./scripts/couchdb-cluster.yml down --remove-orphans --volumes
 

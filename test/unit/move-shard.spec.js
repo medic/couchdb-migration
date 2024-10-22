@@ -457,5 +457,169 @@ describe('move-shard', () => {
     await expect(moveShard('shard2', 'node1')).to.be.rejected.and.eventually.deep.equal({ failed: true });
   });
 
-});
+  it('should update metadata only for the specified database when dbName is provided', async () => {
+    sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1', 'node2'] });
+    sinon.stub(utils, 'getDbMetadata');
 
+    const db1Metadata = {
+      _id: 'db1',
+      changelog: [],
+      by_node: { node1: ['shard1', 'shard2'] },
+      by_range: { shard1: ['node1'], shard2: ['node1'] },
+    };
+
+    const db2Metadata = {
+      _id: 'db2',
+      changelog: [],
+      by_node: { node1: ['shard1', 'shard3'] },
+      by_range: { shard1: ['node1'], shard3: ['node1'] },
+    };
+
+    utils.getDbMetadata.withArgs('db1').resolves(db1Metadata);
+    utils.getDbMetadata.withArgs('db2').resolves(db2Metadata);
+
+    sinon.stub(utils, 'updateDbMetadata').resolves();
+
+    await moveShard('shard1', 'node2', 'db1');
+
+    expect(utils.getDbMetadata.calledOnceWithExactly('db1')).to.be.true;
+    expect(utils.updateDbMetadata.calledOnceWithExactly('db1', sinon.match.object)).to.be.true;
+
+    // Ensure db2's metadata was not updated
+    expect(utils.getDbMetadata.calledWith('db2')).to.be.false;
+    expect(utils.updateDbMetadata.calledWith('db2')).to.be.false;
+  });
+
+  it('should not update metadata if shard is already on the destination node for specified db', async () => {
+    sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1', 'node2'] });
+
+    const db1Metadata = {
+      _id: 'db1',
+      changelog: [],
+      by_node: { node2: ['shard1'], node1: ['shard2'] },
+      by_range: { shard1: ['node2'], shard2: ['node1'] },
+    };
+
+    sinon.stub(utils, 'getDbMetadata').withArgs('db1').resolves(db1Metadata);
+    sinon.stub(utils, 'updateDbMetadata');
+
+    await moveShard('shard1', 'node2', 'db1');
+
+    expect(utils.updateDbMetadata.callCount).to.equal(0);
+  });
+
+  it('should not update metadata for databases that do not use the shard when dbName is provided', async () => {
+    sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1', 'node2'] });
+
+    const db1Metadata = {
+      _id: 'db1',
+      changelog: [],
+      by_node: { node1: ['shard2'] },
+      by_range: { shard2: ['node1'] },
+    };
+
+    sinon.stub(utils, 'getDbMetadata').withArgs('db1').resolves(db1Metadata);
+    sinon.stub(utils, 'updateDbMetadata');
+
+    await moveShard('shard1', 'node2', 'db1');
+
+    expect(utils.updateDbMetadata.callCount).to.equal(0);
+  });
+
+  it('should handle moving shard for a single database when dbName is provided', async () => {
+    sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1', 'node2'] });
+
+    const db1Metadata = {
+      _id: 'db1',
+      changelog: [],
+      by_node: { node1: ['shard1', 'shard2'] },
+      by_range: { shard1: ['node1'], shard2: ['node1'] },
+    };
+
+    sinon.stub(utils, 'getDbMetadata').withArgs('db1').resolves(db1Metadata);
+    sinon.stub(utils, 'updateDbMetadata').resolves();
+
+    await moveShard('shard1', 'node2', 'db1');
+
+    expect(utils.updateDbMetadata.calledOnceWith('db1', sinon.match.object)).to.be.true;
+    const updatedMetadata = utils.updateDbMetadata.getCall(0).args[1];
+
+    expect(updatedMetadata.by_node).to.deep.equal({
+      node1: ['shard2'],
+      node2: ['shard1'],
+    });
+    expect(updatedMetadata.by_range).to.deep.equal({
+      shard1: ['node2'],
+      shard2: ['node1'],
+    });
+  });
+
+  it('should handle moving shard across nodes when multiple nodes are involved', async () => {
+    sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1', 'node2', 'node3'] });
+
+    const db1Metadata = {
+      _id: 'db1',
+      changelog: [],
+      by_node: { node1: ['shard1'], node3: ['shard1'] },
+      by_range: { shard1: ['node1', 'node3'] },
+    };
+
+    sinon.stub(utils, 'getDbMetadata').withArgs('db1').resolves(db1Metadata);
+    sinon.stub(utils, 'updateDbMetadata').resolves();
+
+    await moveShard('shard1', 'node2', 'db1');
+
+    expect(utils.updateDbMetadata.calledOnceWith('db1', sinon.match.object)).to.be.true;
+    const updatedMetadata = utils.updateDbMetadata.getCall(0).args[1];
+
+    expect(updatedMetadata.by_node).to.deep.equal({
+      node2: ['shard1'],
+    });
+    expect(updatedMetadata.by_range).to.deep.equal({
+      shard1: ['node2'],
+    });
+  });
+
+  it('should throw error if getting db metadata fails when dbName is provided', async () => {
+    sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1', 'node2'] });
+    sinon.stub(utils, 'getDbMetadata').withArgs('db1').rejects(new Error('Failed to get db metadata'));
+
+    await expect(moveShard('shard1', 'node2', 'db1')).to.be.rejectedWith('Failed to get db metadata');
+  });
+
+  it('should throw error if updating db metadata fails when dbName is provided', async () => {
+    sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1', 'node2'] });
+
+    const db1Metadata = {
+      _id: 'db1',
+      changelog: [],
+      by_node: { node1: ['shard1'] },
+      by_range: { shard1: ['node1'] },
+    };
+
+    sinon.stub(utils, 'getDbMetadata').withArgs('db1').resolves(db1Metadata);
+    sinon.stub(utils, 'updateDbMetadata').rejects(new Error('Failed to update db metadata'));
+
+    await expect(moveShard('shard1', 'node2', 'db1')).to.be.rejectedWith('Failed to update db metadata');
+  });
+
+  it('should display warning if target node is unknown when dbName is provided', async () => {
+    const consoleWarnStub = sinon.stub(console, 'warn');
+    sinon.stub(utils, 'getMembership').resolves({ cluster_nodes: ['node1'] });
+
+    const db1Metadata = {
+      _id: 'db1',
+      changelog: [],
+      by_node: { node1: ['shard1'] },
+      by_range: { shard1: ['node1'] },
+    };
+
+    sinon.stub(utils, 'getDbMetadata').withArgs('db1').resolves(db1Metadata);
+    sinon.stub(utils, 'updateDbMetadata').resolves();
+
+    await moveShard('shard1', 'node2', 'db1');
+
+    expect(consoleWarnStub.calledWith('Node node2 is unknown.')).to.be.true;
+    consoleWarnStub.restore();
+  });
+});

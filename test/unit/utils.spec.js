@@ -726,4 +726,195 @@ describe('utils', () => {
       });
     });
   });
+
+  describe('getShardMapping', () => {
+    beforeEach(async () => {
+      await setupUtils(utils);
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it('should handle multiple databases with 8 shards and 3 nodes', async () => {
+      const dbs = ['medic', 'medic-sentinel', 'medic-logs'];
+      const shardInfo = {
+        shards: {
+          '00000000-1fffffff': ['node1'],
+          '20000000-3fffffff': ['node2'],
+          '40000000-5fffffff': ['node3'],
+          '60000000-7fffffff': ['node1'],
+          '80000000-9fffffff': ['node2'],
+          'a0000000-bfffffff': ['node3'],
+          'c0000000-dfffffff': ['node1'],
+          'e0000000-ffffffff': ['node2']
+        }
+      };
+
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_all_dbs')
+        .resolves(new Response(JSON.stringify(dbs), { status: 200 }));
+
+      dbs.forEach(db => {
+        fetchStub.withArgs(`http://admin:pass@couchdb-1.local:5984/${db}/_shards`)
+          .resolves(new Response(JSON.stringify(shardInfo), { status: 200 }));
+      });
+
+      const result = await utils.getShardMapping();
+      const expected = {
+        '00000000-1fffffff': { medic: 'node1', 'medic-sentinel': 'node1', 'medic-logs': 'node1' },
+        '20000000-3fffffff': { medic: 'node2', 'medic-sentinel': 'node2', 'medic-logs': 'node2' },
+        '40000000-5fffffff': { medic: 'node3', 'medic-sentinel': 'node3', 'medic-logs': 'node3' },
+        '60000000-7fffffff': { medic: 'node1', 'medic-sentinel': 'node1', 'medic-logs': 'node1' },
+        '80000000-9fffffff': { medic: 'node2', 'medic-sentinel': 'node2', 'medic-logs': 'node2' },
+        'a0000000-bfffffff': { medic: 'node3', 'medic-sentinel': 'node3', 'medic-logs': 'node3' },
+        'c0000000-dfffffff': { medic: 'node1', 'medic-sentinel': 'node1', 'medic-logs': 'node1' },
+        'e0000000-ffffffff': { medic: 'node2', 'medic-sentinel': 'node2', 'medic-logs': 'node2' }
+      };
+
+      expect(result).to.deep.equal(expected);
+      expect(fetchStub.callCount).to.equal(4); // 1 for getDbs + 3 for each database
+    });
+
+    it('should log a warning when multiple nodes are found for a shard range', async () => {
+      const dbs = ['medic'];
+      const shardInfo = {
+        shards: {
+          '00000000-1fffffff': ['node1', 'node2']
+        }
+      };
+
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_all_dbs')
+        .resolves(new Response(JSON.stringify(dbs), { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/medic/_shards')
+        .resolves(new Response(JSON.stringify(shardInfo), { status: 200 }));
+
+      const consoleWarnStub = sinon.stub(console, 'warn');
+      await utils.getShardMapping();
+
+      expect(consoleWarnStub.calledOnce).to.be.true;
+      expect(consoleWarnStub.firstCall.args[0])
+        .to.equal('Unexpected number of nodes for range 00000000-1fffffff in db medic: 2');
+    });
+
+    it('should throw an error for null or undefined shard info', async () => {
+      const dbs = ['medic'];
+
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_all_dbs')
+        .resolves(new Response(JSON.stringify(dbs), { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/medic/_shards')
+        .resolves(new Response('null', { status: 200 }));
+
+      const consoleErrorStub = sinon.stub(console, 'error');
+      await expect(utils.getShardMapping()).to.be.rejectedWith('Failed to get shard mapping');
+      expect(consoleErrorStub.calledOnce).to.be.true;
+      expect(consoleErrorStub.firstCall.args[0]).to.equal('Error getting shard mapping:');
+    });
+
+    it('should throw an error for malformed shard info', async () => {
+      const dbs = ['medic'];
+
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_all_dbs')
+        .resolves(new Response(JSON.stringify(dbs), { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/medic/_shards')
+        .resolves(new Response(JSON.stringify({ invalid: 'data' }), { status: 200 }));
+
+      const consoleErrorStub = sinon.stub(console, 'error');
+      await expect(utils.getShardMapping()).to.be.rejectedWith('Failed to get shard mapping');
+      expect(consoleErrorStub.calledOnce).to.be.true;
+      expect(consoleErrorStub.firstCall.args[0]).to.equal('Error getting shard mapping:');
+    });
+
+    it('should handle shard info with empty node list', async () => {
+      const dbs = ['medic'];
+      const shardInfo = {
+        shards: {
+          '00000000-1fffffff': []
+        }
+      };
+
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_all_dbs')
+        .resolves(new Response(JSON.stringify(dbs), { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/medic/_shards')
+        .resolves(new Response(JSON.stringify(shardInfo), { status: 200 }));
+
+      const consoleWarnStub = sinon.stub(console, 'warn');
+      const result = await utils.getShardMapping();
+
+      expect(result).to.deep.equal({
+        '00000000-1fffffff': { medic: undefined }
+      });
+      expect(consoleWarnStub.calledOnce).to.be.true;
+      expect(consoleWarnStub.firstCall.args[0])
+        .to.equal('Unexpected number of nodes for range 00000000-1fffffff in db medic: 0');
+    });
+
+    it('should throw an error when utils.getDbs fails', async () => {
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_all_dbs')
+        .rejects(new Error('Failed to get DBs'));
+
+      const consoleErrorStub = sinon.stub(console, 'error');
+
+      try {
+        await utils.getShardMapping();
+        expect.fail('Expected getShardMapping to throw an error');
+      } catch (err) {
+        expect(err.message).to.equal('Failed to get shard mapping');
+      }
+
+      expect(consoleErrorStub.calledTwice, 'console.error should be called twice').to.be.true;
+      expect(consoleErrorStub.firstCall.args[0]).to.equal('Error while getting all databases');
+      expect(consoleErrorStub.secondCall.args[0]).to.equal('Error getting shard mapping:');
+    });
+
+    it('should throw an error when utils.request fails for a specific database', async () => {
+      const dbs = ['medic'];
+
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_all_dbs')
+        .resolves(new Response(JSON.stringify(dbs), { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/medic/_shards')
+        .rejects(new Error('Failed to get shard info'));
+
+      const consoleErrorStub = sinon.stub(console, 'error');
+      await expect(utils.getShardMapping()).to.be.rejectedWith('Failed to get shard mapping');
+      expect(consoleErrorStub.calledOnce).to.be.true;
+      expect(consoleErrorStub.firstCall.args[0]).to.equal('Error getting shard mapping:');
+    });
+
+    it('should handle shard ranges on different nodes for different databases', async () => {
+      const dbs = ['db1', 'db2'];
+      const shardInfo1 = {
+        shards: {
+          '00000000-1fffffff': ['node1'],
+          '20000000-3fffffff': ['node2'],
+          '40000000-5fffffff': ['node3'],
+          '60000000-7fffffff': ['node1']
+        }
+      };
+      const shardInfo2 = {
+        shards: {
+          '00000000-1fffffff': ['node2'],  // Different from db1
+          '20000000-3fffffff': ['node3'],  // Different from db1
+          '40000000-5fffffff': ['node1'],  // Different from db1
+          '60000000-7fffffff': ['node2']   // Different from db1
+        }
+      };
+
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/_all_dbs')
+        .resolves(new Response(JSON.stringify(dbs), { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/db1/_shards')
+        .resolves(new Response(JSON.stringify(shardInfo1), { status: 200 }));
+      fetchStub.withArgs('http://admin:pass@couchdb-1.local:5984/db2/_shards')
+        .resolves(new Response(JSON.stringify(shardInfo2), { status: 200 }));
+
+      const result = await utils.getShardMapping();
+      const expected = {
+        '00000000-1fffffff': { db1: 'node1', db2: 'node2' },
+        '20000000-3fffffff': { db1: 'node2', db2: 'node3' },
+        '40000000-5fffffff': { db1: 'node3', db2: 'node1' },
+        '60000000-7fffffff': { db1: 'node1', db2: 'node2' }
+      };
+
+      expect(result).to.deep.equal(expected);
+    });
+  });
 });
