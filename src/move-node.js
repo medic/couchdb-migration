@@ -39,10 +39,16 @@ const replaceNodeInClusteredCouch = async (toNode, shardMapJson) => {
   if (!removedNodes.includes(oldNode)) {
     removedNodes.push(oldNode);
   }
-  return removedNodes;
+return [...new Set(removedNodes)];
 };
 
-const moveNode = async (toNode, shardMapJson) => {
+const moveNode = async (nodeMap, shardMapJson) => {
+  if (typeof nodeMap === 'object') {
+    return await replaceInCluster(nodeMap, shardMapJson);
+  }
+  
+  return  await replaceForSingleNode(nodeMap);
+};
   let removedNodes = [];
   if (typeof toNode === 'object') {
     // Multi-node migration - replace node in clustered couch
