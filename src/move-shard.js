@@ -40,11 +40,11 @@ const updateDbMetadata = (metadata, shard, toNode) => {
   return fromNodes;
 };
 
-const moveShard = async (shard, toNode) => {
+const moveShard = async (shard, toNode, dbName = null) => {
   await validateCall(shard, toNode);
   const removedNodes = [];
 
-  const dbs = await utils.getDbs();
+  const dbs = dbName ? [dbName] : await utils.getDbs();
   for (const dbName of dbs) {
     const metadata = await utils.getDbMetadata(dbName);
     const oldNodes = updateDbMetadata(metadata, shard, toNode);

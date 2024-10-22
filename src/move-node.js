@@ -20,20 +20,34 @@ const replaceForSingleNode = async (toNode) => {
   return [...new Set(removedNodes)];
 };
 
-const replaceInCluster = async (toNode, shardMapJson) => {
+const replaceInCluster = async (nodeMap, shardMapJson) => {
   const removedNodes = [];
   if (!shardMapJson) {
     throw new Error('Shard map JSON is required for multi-node migration');
   }
-  const shardMap = JSON.parse(shardMapJson);
-  const [oldNode, newNode] = Object.entries(toNode)[0];
+
+  const [oldNode, newNode] = Object.entries(nodeMap)[0];
   console.log(`Migrating from ${oldNode} to ${newNode}`);
 
-  for (const [shardRange, currentNode] of Object.entries(shardMap)) {
-    if (currentNode === oldNode) {
-      console.log(`Moving shard ${shardRange} from ${oldNode} to ${newNode}`);
-      const oldNodes = await moveShard.moveShard(shardRange, newNode);
-      removedNodes.push(...oldNodes);
+  // Use the provided shard map
+  const currentDistribution = shardMapJson;
+
+  // For each shard range in the current distribution
+  console.log('Current distribution:', currentDistribution);
+  for (const [shardRange, dbNodes] of Object.entries(currentDistribution)) {
+    console.log('Shard range:', shardRange);
+    console.log('DB nodes:', dbNodes);
+    // dbNodes is an object mapping db names to node names
+    for (const [dbName, nodeName] of Object.entries(dbNodes)) {
+      console.log('DB name:', dbName);
+      console.log('Node name:', nodeName);
+      if (nodeName === oldNode) {
+        console.log(
+          `Moving shard ${shardRange} for db ${dbName} from ${oldNode} to ${newNode}`
+        );
+        const oldNodes = await moveShard.moveShard(shardRange, newNode, dbName);
+        removedNodes.push(...oldNodes);
+      }
     }
   }
   if (!removedNodes.includes(oldNode)) {
@@ -49,13 +63,32 @@ const moveNode = async (nodeMap, shardMapJson) => {
   }
 
   // Single node migration - replace node in standalone couch
-  return  await replaceForSingleNode(nodeMap);
+  return await replaceForSingleNode(nodeMap);
 };
 
 const syncShards = async () => {
-  const allDbs = await utils.getDbs();
-  for (const db of allDbs) {
-    await utils.syncShards(db);
+  try {
+    const membership = await utils.getMembership();
+    const { all_nodes, cluster_nodes } = membership;
+
+    const clusterComplete =
+      all_nodes.length === cluster_nodes.length &&
+      all_nodes.every((node) => cluster_nodes.includes(node));
+
+    if (clusterComplete) {
+      const allDbs = await utils.getDbs();
+      for (const db of allDbs) {
+        await utils.syncShards(db);
+      }
+      console.log('Shards synchronized.');
+    } else {
+      console.log(
+        'Multi-node migration detected. Shard synchronization will be run once all nodes have been migrated.'
+      );
+    }
+  } catch (err) {
+    console.error('Error during shard synchronization:', err);
+    throw err;
   }
 };
 

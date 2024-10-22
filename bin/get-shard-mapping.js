@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-const { get_shard_mapping } = require('../src/get-shard-mapping');
+const { getShardMapping } = require('../src/utils');
 
 (async () => {
   try {
-    const shardMapping = await get_shard_mapping();
-    console.log(shardMapping);
+    const shardMapping = await getShardMapping();
+    console.log(JSON.stringify(shardMapping));
   } catch (err) {
     console.error('An unexpected error occurred', err);
     process.exit(1);
