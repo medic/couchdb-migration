@@ -7,7 +7,7 @@ const replaceForSingleNode = async (toNode) => {
   if (!toNode) {
     const nodes = await utils.getNodes();
     if (nodes.length > 1) {
-      throw new Error('More than one node found. Please specify a node mapping in the format oldNode:newNode.');
+      throw new Error('More than one node found. Please specify a node mapping in the format {"oldNode":"newNode"}.');
     }
     toNode = nodes[0];
   }
