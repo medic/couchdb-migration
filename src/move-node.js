@@ -62,7 +62,7 @@ const moveNode = async (nodeMap, shardMapJson) => {
     return await replaceInCluster(nodeMap, shardMapJson);
   }
 
-  // Single node migration - replace node in standalone couch
+  // Single node migration - replace node in a single node couch
   return await replaceForSingleNode(nodeMap);
 };
 
