@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-
-const [,, toNode, shardMap] = process.argv;
+const [,, toNode] = process.argv;
 
 const { moveNode, syncShards } = require('../src/move-node');
 const { removeNode } = require('../src/remove-node');
@@ -21,22 +20,42 @@ const parseNodeMapping = (input) => {
   }
 };
 
-const parseShardMapJsonInput = (input) => {
-  if (!input) {
-    return;
+const getStdin = () => {
+  return new Promise((resolve) => {
+    if (process.stdin.isTTY) {
+      return resolve('');
+    }
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', chunk => data += chunk);
+    process.stdin.on('end', () => resolve(data));
+  });
+};
+
+const parseShardMapJsonInput = async () => {
+  if (process.env.SHARD_MAPPING) {
+    try {
+      return JSON.parse(process.env.SHARD_MAPPING);
+    } catch (err) {
+      console.warn('Failed to parse SHARD_MAPPING environment variable');
+    }
   }
+
   try {
-    return JSON.parse(input);
+    const input = await getStdin();
+    if (input.trim()) {
+      return JSON.parse(input.trim());
+    }
   } catch (err) {
-    console.error('Failed to parse JSON input:', input);
-    throw new Error('Invalid JSON input');
+    console.warn('Failed to parse shard mapping JSON from stdin');
   }
+  return;
 };
 
 (async () => {
   try {
     const parsedToNode = parseNodeMapping(toNode);
-    const shardMapJson = parseShardMapJsonInput(shardMap);
+    const shardMapJson = await parseShardMapJsonInput();
 
     const movedNodes = await moveNode(parsedToNode, shardMapJson);
     console.log('Node moved successfully');

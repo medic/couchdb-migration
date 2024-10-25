@@ -84,14 +84,26 @@ docker compose -f ../docker-compose-test.yml run couch-migration check-couchdb-u
 
 # change database metadata to match new node name
 # Move nodes one by one using move-node.js oldNode:newNode
-docker compose -f ../docker-compose-test.yml run couch-migration move-node '{"couchdb@couchdb-1.local":"couchdb@couchdb-1-namespace-svc-cluster.local"}' $shard_mapping
-docker compose -f ../docker-compose-test.yml run couch-migration move-node '{"couchdb@couchdb-2.local":"couchdb@couchdb-2-namespace-svc-cluster.local"}' $shard_mapping
-docker compose -f ../docker-compose-test.yml run couch-migration move-node '{"couchdb@couchdb-3.local":"couchdb@couchdb-3-namespace-svc-cluster.local"}' $shard_mapping
+
+# Using env variables
+docker compose -f ../docker-compose-test.yml run -e SHARD_MAPPING="$shard_mapping" couch-migration move-node '{"couchdb@couchdb-1.local":"couchdb@couchdb-1-namespace-svc-cluster.local"}'
+
+# Using stdin
+docker compose -f ../docker-compose-test.yml run couch-migration sh -c "echo '$shard_mapping' | move-node '{\"couchdb@couchdb-2.local\":\"couchdb@couchdb-2-namespace-svc-cluster.local\"}'"
+
+# Using env variables
+docker compose -f ../docker-compose-test.yml run -e SHARD_MAPPING="$shard_mapping" couch-migration move-node '{"couchdb@couchdb-3.local":"couchdb@couchdb-3-namespace-svc-cluster.local"}'
 
 docker compose -f ../docker-compose-test.yml run couch-migration verify
 
 # test that data exists, database shard maps are correct and view indexes are preserved
 shard_mapping2=$(docker compose -f ../docker-compose-test.yml run couch-migration get-shard-mapping)
-node ./scripts/assert-dbs.js $jsondataddir $shard_mapping2
+
+node ./scripts/assert-dbs.js $jsondataddir # Don't specify shard matrix - that gets verified below
+
+node_mapping='{"couchdb@couchdb-1.local":"couchdb@couchdb-1-namespace-svc-cluster.local",
+               "couchdb@couchdb-2.local":"couchdb@couchdb-2-namespace-svc-cluster.local",
+               "couchdb@couchdb-3.local":"couchdb@couchdb-3-namespace-svc-cluster.local"}'
+node ./scripts/compare-shard-mappings.js "$node_mapping" "$shard_mapping" "$shard_mapping2"
 
 docker compose -f ./scripts/couchdb-cluster-2.yml down --remove-orphans --volumes
