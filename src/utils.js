@@ -283,6 +283,15 @@ const getCouchUrl = async () => {
   return couchUrl;
 };
 
+const isClusterComplete = async () => {
+  const membership = await getMembership();
+  const { all_nodes, cluster_nodes } = membership;
+
+  const clusterComplete = all_nodes.length === cluster_nodes.length &&
+    all_nodes.every((node) => cluster_nodes.includes(node));
+  return clusterComplete;
+};
+
 module.exports = {
   request,
   getUrl,
@@ -299,4 +308,5 @@ module.exports = {
   getConfig,
   getCouchUrl,
   prepareCouchUrl,
+  isClusterComplete,
 };

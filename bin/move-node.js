@@ -33,14 +33,6 @@ const getStdin = () => {
 };
 
 const parseShardMapJsonInput = async () => {
-  if (process.env.SHARD_MAPPING) {
-    try {
-      return JSON.parse(process.env.SHARD_MAPPING);
-    } catch (err) {
-      console.warn('Failed to parse SHARD_MAPPING environment variable');
-    }
-  }
-
   try {
     const input = await getStdin();
     if (input.trim()) {

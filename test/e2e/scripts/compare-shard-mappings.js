@@ -37,7 +37,7 @@ function compareMappings(nodeMappingJson, oldMappingJson, newMappingJson) {
       const newNode = newShardDbs[dbName];
 
       // Map old node name to new node name using the nodeMapping
-      const expectedNewNode = nodeMapping[oldNode] || oldNode;
+      const expectedNewNode = nodeMapping[oldNode];
 
       if (expectedNewNode !== newNode) {
         console.error(

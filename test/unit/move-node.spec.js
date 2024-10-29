@@ -175,33 +175,27 @@ describe('move-node', () => {
     });
 
     it('should sync shards for all dbs', async () => {
-      sinon.stub(utils, 'getMembership').resolves({
-        all_nodes: ['node1', 'node2'],
-        cluster_nodes: ['node1', 'node2'],
-      });
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
       sinon.stub(utils, 'getDbs').resolves(['one', 'two', 'three']);
       sinon.stub(utils, 'syncShards').resolves({ ok: true });
 
       await moveNodeSpec.syncShards();
 
-      expect(utils.getMembership.callCount).to.equal(1);
+      expect(utils.isClusterComplete.callCount).to.equal(1);
       expect(utils.getDbs.callCount).to.equal(1);
       expect(utils.syncShards.callCount).to.equal(3);
       expect(utils.syncShards.args).to.deep.equal([['one'], ['two'], ['three']]);
     });
 
     it('should sync shards when cluster is complete', async () => {
-      sinon.stub(utils, 'getMembership').resolves({
-        all_nodes: ['node1', 'node2'],
-        cluster_nodes: ['node1', 'node2'],
-      });
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
       sinon.stub(utils, 'getDbs').resolves(['db1', 'db2']);
       sinon.stub(utils, 'syncShards').resolves({ ok: true });
       const consoleLogStub = sinon.stub(console, 'log');
 
       await moveNodeSpec.syncShards();
 
-      expect(utils.getMembership.callCount).to.equal(1);
+      expect(utils.isClusterComplete.callCount).to.equal(1);
       expect(utils.getDbs.callCount).to.equal(1);
       expect(utils.syncShards.callCount).to.equal(2);
       expect(utils.syncShards.args).to.deep.equal([['db1'], ['db2']]);
@@ -211,17 +205,14 @@ describe('move-node', () => {
     });
 
     it('should skip syncing shards when cluster is incomplete', async () => {
-      sinon.stub(utils, 'getMembership').resolves({
-        all_nodes: ['node1', 'node2'],
-        cluster_nodes: ['node1'],
-      });
+      sinon.stub(utils, 'isClusterComplete').resolves(false);
       const consoleLogStub = sinon.stub(console, 'log');
       const getDbsStub = sinon.stub(utils, 'getDbs');
       const syncShardsStub = sinon.stub(utils, 'syncShards');
 
       await moveNodeSpec.syncShards();
 
-      expect(utils.getMembership.callCount).to.equal(1);
+      expect(utils.isClusterComplete.callCount).to.equal(1);
       expect(getDbsStub.notCalled).to.be.true;
       expect(syncShardsStub.notCalled).to.be.true;
       expect(consoleLogStub.calledWith(
@@ -231,23 +222,22 @@ describe('move-node', () => {
       consoleLogStub.restore();
     });
 
-    it('should throw error if getMembership fails', async () => {
-      sinon.stub(utils, 'getMembership').rejects(new Error('membership error'));
-      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith(Error, 'membership error');
+    it('should throw error if isClusterComplete fails', async () => {
+      const error = new Error('membership error');
+      sinon.stub(utils, 'isClusterComplete').rejects(error);
+
+      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith('membership error');
     });
 
     it('should sync shards for all dbs when cluster has one node', async () => {
-      sinon.stub(utils, 'getMembership').resolves({
-        all_nodes: ['node1'],
-        cluster_nodes: ['node1'],
-      });
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
       sinon.stub(utils, 'getDbs').resolves(['db1']);
       sinon.stub(utils, 'syncShards').resolves({ ok: true });
       const consoleLogStub = sinon.stub(console, 'log');
 
       await moveNodeSpec.syncShards();
 
-      expect(utils.getMembership.callCount).to.equal(1);
+      expect(utils.isClusterComplete.callCount).to.equal(1);
       expect(utils.getDbs.callCount).to.equal(1);
       expect(utils.syncShards.callCount).to.equal(1);
       expect(utils.syncShards.args).to.deep.equal([['db1']]);
@@ -256,24 +246,18 @@ describe('move-node', () => {
       consoleLogStub.restore();
     });
 
-    it('should throw error if all dbs fails', async () => {
-      sinon.stub(utils, 'getMembership').resolves({
-        all_nodes: ['node1', 'node2'],
-        cluster_nodes: ['node1', 'node2'],
-      });
+    it('should throw error if getDbs fails', async () => {
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
       sinon.stub(utils, 'getDbs').rejects(new Error('omg'));
 
-      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith(Error, 'omg');
+      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith('omg');
     });
 
-    it('should throw error if sync shards fails', async () => {
-      sinon.stub(utils, 'getMembership').resolves({
-        all_nodes: ['node1', 'node2'],
-        cluster_nodes: ['node1', 'node2'],
-      });
+    it('should throw error if syncShards fails', async () => {
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
       sinon.stub(utils, 'getDbs').resolves(['one', 'two', 'three']);
       sinon.stub(utils, 'syncShards').rejects(new Error('oh noes'));
-      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith(Error, 'oh noes');
+      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith('oh noes');
     });
   });
 });
