@@ -1,4 +1,5 @@
 const utils = require('./utils');
+const DBS_TO_IGNORE = ['_global_changes', '_replicator'];
 
 const verifyViews = async (dbName, numDocs) => {
   if (!numDocs) {
@@ -29,6 +30,9 @@ const verifyViews = async (dbName, numDocs) => {
 };
 
 const verifyDb = async (dbName) => {
+  if (DBS_TO_IGNORE.includes(dbName)) {
+    return;
+  }
   console.info(`Verifying ${dbName}`);
   await utils.syncShards(dbName);
 

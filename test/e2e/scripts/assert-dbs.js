@@ -7,6 +7,7 @@ const shardMatrix = shardMatrixJson && JSON.parse(shardMatrixJson);
 
 const getDbs = () => rpn.get({ url: `${url}/_all_dbs`, json: true });
 const syncShards = (db) => rpn.post({ url: `${url}/${db}/_sync_shards`, json: true });
+const DBS_TO_IGNORE = ['_global_changes', '_replicator', '_users'];
 
 const checkDocs = async (db) => {
   const docs = require(path.join(dataPath, `${db}.json`));
@@ -32,7 +33,7 @@ const getViews = async (dbName) => {
   const ddocs = await rpn.get({ url: `${url}/${dbName}/_design_docs`, json: true, qs: { include_docs: true } });
   const viewDdocs = [];
   ddocs.rows.forEach(row => {
-    const views = Object.keys(row.doc.views);
+    const views = Object.keys(row.doc.views || {});
     viewDdocs.push(...views.map(view => ([ row.doc._id, view ])));
   });
   return viewDdocs;
@@ -45,7 +46,7 @@ const checkViewIndexes = async (db) => {
     const staleViewUrl = `${url}/${db}/${ddoc}/_view/${view}?stale=ok&update_seq=true&limit=0`;
     console.log(staleViewUrl);
     const staleViewResult = await rpn.get({ url: staleViewUrl, json: true });
-    const liveViewUrl = `${url}/${db}/${ddoc}/_view/${view}?&update_seq=true&limit=0`;
+    const liveViewUrl = `${url}/${db}/${ddoc}/_view/${view}?update_seq=true&limit=0`;
     const liveViewResult = await rpn.get({ url: liveViewUrl, json: true });
 
     if (staleViewResult.total_rows !== liveViewResult.total_rows) {
@@ -86,7 +87,7 @@ const checkSharding = async (db) => {
   }
 
   for (const db of dbs) {
-    if (db === '_users') {
+    if (DBS_TO_IGNORE.includes(db)) {
       continue;
     }
 

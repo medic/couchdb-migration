@@ -82,29 +82,182 @@ describe('move-node', () => {
 
       await expect(moveNodeSpec.moveNode()).to.be.rejectedWith(Error, 'holdupaminute');
     });
+
+    it('should handle multi-node migration in clustered CouchDB', async () => {
+      const shardMap = {
+        '00000000-1fffffff': { 'medic': 'node1', 'medic-sentinel': 'node1' },
+        '20000000-3fffffff': { 'medic': 'node2', 'medic-sentinel': 'node2' },
+        '40000000-5fffffff': { 'medic': 'node1', 'medic-sentinel': 'node1' },
+        '60000000-7fffffff': { 'medic': 'node2', 'medic-sentinel': 'node2' }
+      };
+      const toNode = { 'node1': 'node3' };
+
+      sinon.stub(moveShard, 'moveShard').resolves(['node1']);
+      const consoleLogStub = sinon.stub(console, 'log');
+
+      const result = await moveNodeSpec.moveNode(toNode, shardMap);
+
+      expect(result).to.deep.equal(['node1']);
+      expect(moveShard.moveShard.callCount).to.equal(4); // 2 shards moved for 2 dbs
+      expect(moveShard.moveShard.args).to.deep.equal([
+        ['00000000-1fffffff', 'node3', 'medic'],
+        ['00000000-1fffffff', 'node3', 'medic-sentinel'],
+        ['40000000-5fffffff', 'node3', 'medic'],
+        ['40000000-5fffffff', 'node3', 'medic-sentinel']
+      ]);
+      expect(consoleLogStub.calledWith('Migrating from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith('Moving shard 00000000-1fffffff for db medic from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith(
+        'Moving shard 00000000-1fffffff for db medic-sentinel from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith('Moving shard 40000000-5fffffff for db medic from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith(
+        'Moving shard 40000000-5fffffff for db medic-sentinel from node1 to node3')).to.be.true;
+    });
+
+    it('should throw an error if shard map JSON is missing in multi-node migration', async () => {
+      const toNode = { 'node1': 'node3' };
+
+      await expect(moveNodeSpec.moveNode(toNode))
+        .to.be.rejectedWith(Error, 'Shard map JSON is required for multi-node migration');
+    });
+
+    it('should handle case where old node is not in any shard range', async () => {
+      const shardMap = {
+        '00000000-1fffffff': { 'medic': 'node2', 'medic-sentinel': 'node2' },
+        '20000000-3fffffff': { 'medic': 'node2', 'medic-sentinel': 'node2' }
+      };
+      const toNode = { 'node1': 'node3' };
+
+      sinon.stub(moveShard, 'moveShard').resolves([]);
+
+      const result = await moveNodeSpec.moveNode(toNode, shardMap);
+
+      expect(result).to.deep.equal(['node1']);
+      expect(moveShard.moveShard.callCount).to.equal(0);
+    });
+
+    it('should handle moving nodes when shard distribution differs across databases', async () => {
+      const shardMap = {
+        '00000000-1fffffff': { 'medic': 'node1', 'medic-sentinel': 'node2' },
+        '20000000-3fffffff': { 'medic': 'node2', 'medic-sentinel': 'node3' },
+        '40000000-5fffffff': { 'medic': 'node3', 'medic-sentinel': 'node1' },
+        '60000000-7fffffff': { 'medic': 'node1', 'medic-sentinel': 'node2' }
+      };
+      const toNode = { 'node1': 'node3' };
+
+      sinon.stub(moveShard, 'moveShard').resolves(['node1']);
+      const consoleLogStub = sinon.stub(console, 'log');
+
+      const result = await moveNodeSpec.moveNode(toNode, shardMap);
+
+      expect(result).to.deep.equal(['node1']);
+      expect(moveShard.moveShard.callCount).to.equal(3);
+      expect(moveShard.moveShard.args).to.deep.equal([
+        ['00000000-1fffffff', 'node3', 'medic'],
+        ['40000000-5fffffff', 'node3', 'medic-sentinel'],
+        ['60000000-7fffffff', 'node3', 'medic']
+      ]);
+      expect(consoleLogStub.calledWith('Migrating from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith('Moving shard 00000000-1fffffff for db medic from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith(
+        'Moving shard 40000000-5fffffff for db medic-sentinel from node1 to node3')).to.be.true;
+      expect(consoleLogStub.calledWith('Moving shard 60000000-7fffffff for db medic from node1 to node3')).to.be.true;
+
+      // Check that we're not moving shards that aren't on node1 according to the shardmap
+      expect(moveShard.moveShard.calledWith('20000000-3fffffff', 'node3')).to.be.false;
+    });
   });
 
   describe('syncShards', () => {
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
     it('should sync shards for all dbs', async () => {
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
       sinon.stub(utils, 'getDbs').resolves(['one', 'two', 'three']);
       sinon.stub(utils, 'syncShards').resolves({ ok: true });
 
       await moveNodeSpec.syncShards();
 
+      expect(utils.isClusterComplete.callCount).to.equal(1);
       expect(utils.getDbs.callCount).to.equal(1);
       expect(utils.syncShards.callCount).to.equal(3);
       expect(utils.syncShards.args).to.deep.equal([['one'], ['two'], ['three']]);
     });
 
-    it('should throw error if all dbs fails', async () => {
-      sinon.stub(utils, 'getDbs').rejects(new Error('omg'));
-      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith(Error, 'omg');
+    it('should sync shards when cluster is complete', async () => {
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
+      sinon.stub(utils, 'getDbs').resolves(['db1', 'db2']);
+      sinon.stub(utils, 'syncShards').resolves({ ok: true });
+      const consoleLogStub = sinon.stub(console, 'log');
+
+      await moveNodeSpec.syncShards();
+
+      expect(utils.isClusterComplete.callCount).to.equal(1);
+      expect(utils.getDbs.callCount).to.equal(1);
+      expect(utils.syncShards.callCount).to.equal(2);
+      expect(utils.syncShards.args).to.deep.equal([['db1'], ['db2']]);
+      expect(consoleLogStub.calledWith('Shards synchronized.')).to.be.true;
+
+      consoleLogStub.restore();
     });
 
-    it('should throw error if sync shards fails', async () => {
+    it('should skip syncing shards when cluster is incomplete', async () => {
+      sinon.stub(utils, 'isClusterComplete').resolves(false);
+      const consoleLogStub = sinon.stub(console, 'log');
+      const getDbsStub = sinon.stub(utils, 'getDbs');
+      const syncShardsStub = sinon.stub(utils, 'syncShards');
+
+      await moveNodeSpec.syncShards();
+
+      expect(utils.isClusterComplete.callCount).to.equal(1);
+      expect(getDbsStub.notCalled).to.be.true;
+      expect(syncShardsStub.notCalled).to.be.true;
+      expect(consoleLogStub.calledWith(
+        'Multi-node migration detected. Shard synchronization will be run once all nodes have been migrated.'
+      )).to.be.true;
+
+      consoleLogStub.restore();
+    });
+
+    it('should throw error if isClusterComplete fails', async () => {
+      const error = new Error('membership error');
+      sinon.stub(utils, 'isClusterComplete').rejects(error);
+
+      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith('membership error');
+    });
+
+    it('should sync shards for all dbs when cluster has one node', async () => {
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
+      sinon.stub(utils, 'getDbs').resolves(['db1']);
+      sinon.stub(utils, 'syncShards').resolves({ ok: true });
+      const consoleLogStub = sinon.stub(console, 'log');
+
+      await moveNodeSpec.syncShards();
+
+      expect(utils.isClusterComplete.callCount).to.equal(1);
+      expect(utils.getDbs.callCount).to.equal(1);
+      expect(utils.syncShards.callCount).to.equal(1);
+      expect(utils.syncShards.args).to.deep.equal([['db1']]);
+      expect(consoleLogStub.calledWith('Shards synchronized.')).to.be.true;
+
+      consoleLogStub.restore();
+    });
+
+    it('should throw error if getDbs fails', async () => {
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
+      sinon.stub(utils, 'getDbs').rejects(new Error('omg'));
+
+      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith('omg');
+    });
+
+    it('should throw error if syncShards fails', async () => {
+      sinon.stub(utils, 'isClusterComplete').resolves(true);
       sinon.stub(utils, 'getDbs').resolves(['one', 'two', 'three']);
       sinon.stub(utils, 'syncShards').rejects(new Error('oh noes'));
-      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith(Error, 'oh noes');
+      await expect(moveNodeSpec.syncShards()).to.be.rejectedWith('oh noes');
     });
   });
 });
