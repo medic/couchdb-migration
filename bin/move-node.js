@@ -21,7 +21,7 @@ const parseNodeMapping = (input) => {
 };
 
 const getStdin = () => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (process.stdin.isTTY) {
       return resolve('');
     }
@@ -29,6 +29,7 @@ const getStdin = () => {
     process.stdin.setEncoding('utf8');
     process.stdin.on('data', chunk => data += chunk);
     process.stdin.on('end', () => resolve(data));
+    process.stdin.on('error', err => reject(err));
   });
 };
 

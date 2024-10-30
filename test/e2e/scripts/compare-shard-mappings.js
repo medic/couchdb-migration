@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const [,, nodeMappingJson, oldMappingJson, newMappingJson] = process.argv;
+const DBS_TO_IGNORE = ['_global_changes', '_replicator', '_users'];
 
 if (!nodeMappingJson || !oldMappingJson || !newMappingJson) {
   console.error('Usage: compare-shard-mappings.js <node-mapping-json> <old-mapping-json> <new-mapping-json>');
@@ -28,6 +29,10 @@ function compareMappings(nodeMappingJson, oldMappingJson, newMappingJson) {
     const newShardDbs = newMapping[shardRange];
 
     Object.keys(oldShardDbs).forEach(dbName => {
+      if (DBS_TO_IGNORE.includes(dbName)) {
+        return;
+      }
+
       if (!(dbName in newShardDbs)) {
         console.error(`Database ${dbName} in shard range ${shardRange} not found in new mapping`);
         process.exit(1);
